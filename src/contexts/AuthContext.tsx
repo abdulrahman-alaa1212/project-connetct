@@ -20,10 +20,10 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // MOCK_USERS needs to be accessible for updates if email changes, but for now, we simplify.
 const MOCK_USERS_DB: Record<string, User> = {
-  "hospital@example.com": { id: "1", name: "City General Hospital", email: "hospital@example.com", role: "hospital", avatar: "https://placehold.co/100x100.png", hospitalId: "hosp1" },
-  "prof@example.com": { id: "2", name: "Dr. Alex Professional", email: "prof@example.com", role: "professional", avatar: "https://placehold.co/100x100.png" },
-  "provider@example.com": { id: "3", name: "Tech Solutions Inc.", email: "provider@example.com", role: "provider", avatar: "https://placehold.co/100x100.png" },
-  "admin@example.com": { id: "4", name: "Admin User", email: "admin@example.com", role: "admin", avatar: "https://placehold.co/100x100.png" },
+  "hospital@example.com": { id: "hosp1", name: "City General Hospital", email: "hospital@example.com", role: "hospital", avatar: "https://placehold.co/100x100.png", hospitalId: "hosp1" },
+  "prof@example.com": { id: "prof1", name: "Dr. Alex Professional", email: "prof@example.com", role: "professional", avatar: "https://placehold.co/100x100.png" },
+  "provider@example.com": { id: "prov1", name: "Tech Solutions Inc.", email: "provider@example.com", role: "provider", avatar: "https://placehold.co/100x100.png", providerId: "prov1" },
+  "admin@example.com": { id: "admin1", name: "Admin User", email: "admin@example.com", role: "admin", avatar: "https://placehold.co/100x100.png" },
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -65,13 +65,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (MOCK_USERS_DB[data.email]) {
       throw new Error("User already exists");
     }
+    const baseId = String(Object.keys(MOCK_USERS_DB).length + 1);
     const newUser: User = {
-      id: String(Object.keys(MOCK_USERS_DB).length + 1),
+      id: `${data.role.substring(0,4)}${baseId}`, // e.g. hosp2, prof2
       name: data.name,
       email: data.email,
       role: data.role as UserRole,
       avatar: "https://placehold.co/100x100.png",
-      ...(data.role === "hospital" && { hospitalId: `hosp${Object.keys(MOCK_USERS_DB).length + 1}`})
+      ...(data.role === "hospital" && { hospitalId: `hosp${baseId}`}),
+      ...(data.role === "provider" && { providerId: `prov${baseId}`})
     };
     // MOCK_USERS_DB[newUser.email] = newUser; // Add to our mock DB
     setUser(newUser);
@@ -111,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(updatedUser);
     localStorage.setItem("yura-connect-user", JSON.stringify(updatedUser));
     setIsLoading(false);
-  }, [user, router]);
+  }, [user]);
 
 
   return (

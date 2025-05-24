@@ -7,7 +7,8 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string; // URL to avatar image
-  hospitalId?: string; // Added for hospital users
+  hospitalId?: string; 
+  providerId?: string; // Added for provider users
 }
 
 export interface JobPosting {
@@ -23,7 +24,7 @@ export interface JobPosting {
   postedByAdmin?: boolean; // Added to identify admin-posted jobs
 }
 
-export interface Assessment {
+export interface Assessment { // This is the Admin's view/management model for assessments
   id: string;
   hospitalId: string;
   hospitalName: string;
@@ -35,12 +36,36 @@ export interface Assessment {
   budget?: string;
   currentTech?: string;
   goals?: string;
-  aiSummary?: string; // Added to store AI summary
-  aiSolutions?: { // Added to store AI solutions
+  aiSummary?: string; 
+  aiSolutions?: { 
     suggestedSolutions: string;
     reasoning: string;
   };
+  adminNotes?: string; // Notes from admin review
 }
+
+// For the detailed form schema
+import type { z } from "zod";
+import type { FullAssessmentSchema } from "@/lib/schemas";
+export type FullAssessmentSchemaValues = z.infer<typeof FullAssessmentSchema>;
+
+export interface UserSubmittedAssessment { // Hospital user's submitted assessment
+  id: string;
+  hospitalId: string;
+  hospitalName: string; // Store for quick display
+  submissionDate: string;
+  status: "Submitted" | "In Review" | "Responded" | "Completed"; // More granular for hospital view
+  primaryGoalsSummary?: string; // For quick display
+  formData: FullAssessmentSchemaValues; // The full submission
+  aiSummary?: string;
+  aiSolutions?: {
+    suggestedSolutions: string;
+    reasoning: string;
+  };
+  adminResponseText?: string; // Text response from admin
+  adminResponsePdfName?: string; // Filename of PDF response from admin
+}
+
 
 export interface CvSubmission {
   id: string;
@@ -67,4 +92,16 @@ export interface MatchedSolutionResult {
 export interface RecommendedJobResult {
   professionalId: string;
   recommendedJobs: Pick<JobPosting, "id" | "title" | "company">[];
+}
+
+export interface ProviderService {
+  id: string;
+  providerId: string;
+  name: string;
+  description: string;
+  category: "VR Development" | "AR Content Creation" | "MR Consultation" | "XR Training Solutions" | "Hardware Provision" | "Platform Services" | "Other";
+  pricingModel: "Project-based" | "Hourly Rate" | "Subscription" | "Custom Quote";
+  tags?: string[]; // Optional tags for better searchability
+  imageUrl?: string; // Optional image for the service
+  dataAiHint?: string;
 }
