@@ -12,6 +12,7 @@ import {
   Settings,
   UserCircle,
   LayoutGrid,
+  ListChecks, // Added for "View My Assessments"
 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { UserNav } from "@/components/layout/UserNav";
@@ -38,8 +39,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, roles: ["hospital", "professional", "provider", "admin"] },
-  { href: "/assessment", label: "My Assessment", icon: ClipboardList, roles: ["hospital"] },
-  { href: "/solutions", label: "Submit Assessment Request", icon: LayoutGrid, roles: ["hospital"] },
+  { href: "/assessment", label: "Submit New Assessment", icon: ClipboardList, roles: ["hospital"] }, // Relabeled
+  { href: "/my-assessments", label: "View My Assessments", icon: ListChecks, roles: ["hospital"] }, // New link
+  // { href: "/solutions", label: "Submit Assessment Request", icon: LayoutGrid, roles: ["hospital"] }, // Removed for now
   { href: "/jobs", label: "Job Board", icon: Briefcase, roles: ["professional", "admin"] },
   { href: "/my-cv", label: "My CV / Applications", icon: UserCircle, roles: ["professional"] },
   { href: "/admin/reports", label: "Generate Reports", icon: FileText, roles: ["admin"] },

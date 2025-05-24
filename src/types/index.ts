@@ -1,3 +1,4 @@
+
 export type UserRole = "hospital" | "professional" | "provider" | "admin";
 
 export interface User {
@@ -6,6 +7,7 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string; // URL to avatar image
+  hospitalId?: string; // Added for hospital users
 }
 
 export interface JobPosting {
@@ -25,13 +27,17 @@ export interface Assessment {
   hospitalName: string;
   submissionDate: string; // ISO date string
   status: "Pending" | "Reviewed" | "Completed";
-  // Add more assessment-specific fields here
   vrNeeds?: string;
   mrNeeds?: string;
   arNeeds?: string;
   budget?: string;
   currentTech?: string;
   goals?: string;
+  aiSummary?: string; // Added to store AI summary
+  aiSolutions?: { // Added to store AI solutions
+    suggestedSolutions: string;
+    reasoning: string;
+  };
 }
 
 export interface CvSubmission {

@@ -10,7 +10,7 @@ import { Download, Eye, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeAssessment } from "@/ai/flows/summarize-assessment";
 
-// Mock assessment data
+// Mock assessment data - now includes aiSummary and aiSolutions
 const mockAssessments: Assessment[] = [
   {
     id: "asm1",
@@ -24,6 +24,11 @@ const mockAssessments: Assessment[] = [
     budget: "$50k - $200k",
     currentTech: "Some VR headsets (Oculus Quest 2)",
     goals: "Improve surgical outcomes and training efficiency.",
+    aiSummary: "City General Hospital requires VR for orthopedic surgical training and MR for neurosurgery guidance. They also need AR for vein finding. Their budget is substantial, and they aim to enhance surgical outcomes and training.",
+    aiSolutions: {
+      suggestedSolutions: "PrecisionVR Surgical Sim, NeuroNav MR System, VeinSight AR Glasses",
+      reasoning: "PrecisionVR offers realistic orthopedic modules. NeuroNav MR is designed for neurosurgical accuracy. VeinSight AR improves first-attempt success for IVs."
+    }
   },
   {
     id: "asm2",
@@ -37,12 +42,35 @@ const mockAssessments: Assessment[] = [
     budget: "< $10k",
     currentTech: "Standard PCs only",
     goals: "Enhance patient comfort.",
+    aiSummary: "Rural Health Clinic needs a low-cost VR solution for patient distraction during minor procedures. They have a small budget and basic tech.",
+    aiSolutions: {
+      suggestedSolutions: "CalmVR Basic, DistractoApp Mobile VR",
+      reasoning: "These solutions are affordable and require minimal setup, suitable for basic patient distraction needs."
+    }
   },
   {
     id: "asm3",
-    hospitalId: "hosp3",
-    hospitalName: "University Medical Center",
-    submissionDate: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+    hospitalId: "hosp3", // Another hospital for testing filtering
+    hospitalName: "Green Valley Community Care",
+    submissionDate: new Date(Date.now() - 86400000 * 8).toISOString(), 
+    status: "Pending",
+    vrNeeds: "VR for physical therapy and rehabilitation.",
+    mrNeeds: "Not at this time.",
+    arNeeds: "AR for anatomy education for junior staff.",
+    budget: "$10k - $50k",
+    currentTech: "Modern PCs, good Wi-Fi",
+    goals: "Improve patient recovery times and staff training.",
+    aiSummary: "Green Valley needs VR for rehab and AR for staff anatomy training. Budget is moderate.",
+    aiSolutions: {
+      suggestedSolutions: "RehabVR Suite, HoloAnatomy AR",
+      reasoning: "RehabVR offers diverse physical therapy modules. HoloAnatomy AR is effective for interactive learning."
+    }
+  },
+  {
+    id: "asm4", // Assessment for hosp1 again
+    hospitalId: "hosp1",
+    hospitalName: "City General Hospital",
+    submissionDate: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
     status: "Completed",
     vrNeeds: "Advanced simulation for various specialties.",
     mrNeeds: "Pre-operative planning and intraoperative navigation.",
@@ -50,8 +78,16 @@ const mockAssessments: Assessment[] = [
     budget: "> $200k",
     currentTech: "Dedicated simulation lab, high-speed network.",
     goals: "Become a leader in medical XR technology.",
+    aiSummary: "City General Hospital (follow-up) is looking for comprehensive XR solutions across multiple specialties, including advanced simulation, MR for surgical planning, and AR for remote consultations. They have a large budget and advanced infrastructure.",
+    aiSolutions: {
+      suggestedSolutions: "SimX Enterprise Platform, MedVis MR Suite, ConnectAR Remote Assist",
+      reasoning: "SimX provides broad specialty coverage. MedVis MR offers robust pre-op and intra-op tools. ConnectAR is designed for secure remote expert consultations."
+    }
   },
 ];
+// Export mockAssessments to be used by my-assessments page
+export { mockAssessments };
+
 
 export default function AdminReportsPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -78,8 +114,14 @@ export default function AdminReportsPage() {
     const assessmentDataString = `Hospital: ${assessment.hospitalName}. VR Needs: ${assessment.vrNeeds}. MR Needs: ${assessment.mrNeeds}. AR Needs: ${assessment.arNeeds}. Budget: ${assessment.budget}. Current Tech: ${assessment.currentTech}. Goals: ${assessment.goals}.`;
     
     try {
+      // In a real scenario, this might involve more complex report generation or fetching an existing admin-prepared report.
+      // For now, we re-use the summarization flow for demonstration.
       const summary = await summarizeAssessment({ assessmentData: assessmentDataString });
-      setReportContent(summary.summary); 
+      // Prepend existing AI summary if available, for a more "complete" report
+      const fullReport = assessment.aiSummary 
+        ? `Original AI Summary:\n${assessment.aiSummary}\n\nAdmin Generated Notes (based on current summarization):\n${summary.summary}`
+        : summary.summary;
+      setReportContent(fullReport); 
       toast({ title: "Report Generated", description: `Report for ${assessment.hospitalName} is ready.` });
     } catch (error) {
       console.error("Report generation error:", error);
@@ -114,7 +156,7 @@ export default function AdminReportsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Hospital Assessment Reports</CardTitle>
-          <CardDescription>View submitted assessments and generate summary reports.</CardDescription>
+          <CardDescription>View submitted assessments and generate summary reports for hospitals.</CardDescription>
         </CardHeader>
         <CardContent>
           {assessments.length === 0 ? (
@@ -196,4 +238,3 @@ export default function AdminReportsPage() {
     </div>
   );
 }
-
