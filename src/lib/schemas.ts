@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 export const LoginSchema = z.object({
@@ -14,8 +15,6 @@ export const SignupSchema = z.object({
   }),
 });
 
-// This is the old, simpler schema. We'll keep it for now if other parts of the app use it,
-// but the new form will use FullAssessmentSchema.
 export const SimpleAssessmentSchema = z.object({
   hospitalName: z.string().min(3, "Hospital name is required."),
   vrNeeds: z.string().optional(),
@@ -30,75 +29,75 @@ export const SimpleAssessmentSchema = z.object({
 
 
 const HospitalTypeEnum = z.enum([
-  "عام",
-  "خاص",
-  "جامعي",
-  "عسكري",
-  "خيري",
-  "أخرى",
+  "Public",
+  "Private",
+  "University",
+  "Military",
+  "Charity",
+  "Other",
 ]);
 
-const YesNoEnum = z.enum(["نعم", "لا"]);
-const YesNoMaybeEnum = z.enum(["نعم", "لا", "ربما مستقبلاً", "غير متأكد"]);
+const YesNoEnum = z.enum(["Yes", "No"]);
+const YesNoMaybeEnum = z.enum(["Yes", "No", "Maybe in the future", "Not sure"]);
 const YesNoWorkingOnItEnum = z.enum([
-  "نعم، لدينا مؤشرات واضحة",
-  "نعمل على تحديدها",
-  "لا، لم نقم بتحديدها بعد ونحتاج مساعدة في ذلك",
+  "Yes, we have clear indicators",
+  "We are working on defining them",
+  "No, we haven't defined them yet and need help with that",
 ]);
 const WifiPerformanceEnum = z.enum([
-  "نعم",
-  "لا",
-  "جزئيًا",
-  "غير متأكد",
+  "Yes",
+  "No",
+  "Partially",
+  "Not sure",
 ]);
 const TechTeamEnum = z.enum([
-  "نعم، فريق داخلي كامل",
-  "نعم، فريق داخلي محدود",
-  "لا، نعتمد على دعم خارجي",
-  "أخرى",
+  "Yes, full internal team",
+  "Yes, limited internal team",
+  "No, we rely on external support",
+  "Other",
 ]);
 const ExperienceLevelEnum = z.enum([
-  "منخفضة جدًا",
-  "منخفضة",
-  "متوسطة",
-  "عالية",
-  "عالية جدًا",
-  "غير متأكد",
+  "Very Low",
+  "Low",
+  "Medium",
+  "High",
+  "Very High",
+  "Not sure",
 ]);
-const YesNoLaterEnum = z.enum(["نعم", "لا", "سيتم تحديده لاحقًا"]);
+const YesNoLaterEnum = z.enum(["Yes", "No", "Will be determined later"]);
 const MarketingInterestEnum = z.enum([
-  "نعم، نفكر في ذلك بجدية ونعتبره أولوية",
-  "نعم، نفكر في ذلك ولكن ليس أولوية قصوى حاليًا",
-  "ربما، الفكرة مطروحة ولكن لم يتم دراستها بعمق",
-  "لا، لم نفكر في ذلك حاليًا",
-  "أخرى",
+  "Yes, we are seriously considering it and consider it a priority",
+  "Yes, we are considering it but it is not a top priority currently",
+  "Maybe, the idea is on the table but has not been studied in depth",
+  "No, we are not currently considering it",
+  "Other",
 ]);
 const DepartmentProcedureTypeEnum = z.enum([
-  "تقليدية في الغالب وتعتمد على مهارات وخبرات بشرية بشكل كبير",
-  "حديثة وتعتمد على تقنيات وأجهزة متطورة بشكل كبير",
-  "مزيج متوازن من الطرق التقليدية والحديثة",
+  "Mostly traditional and heavily reliant on human skills and experience",
+  "Modern and heavily reliant on advanced technologies and devices",
+  "A balanced mix of traditional and modern methods",
 ]);
 
 const BudgetAllocationEnum = z.enum([
-  "نعم، تم تخصيص ميزانية محددة",
-  "نعم، هناك ميزانية تقديرية ولكنها مرنة",
-  "لا، لم يتم تخصيص ميزانية بعد، ولكننا في مرحلة دراسة التكاليف",
-  "لا، ونحتاج إلى تقديرات تكلفة بناءً على التوصيات",
+  "Yes, a specific budget has been allocated",
+  "Yes, there is an estimated budget but it is flexible",
+  "No, a budget has not been allocated yet, but we are in the cost study phase",
+  "No, and we need cost estimates based on recommendations",
 ]);
 
 const TimelineEnum = z.enum([
-  "خلال 3 أشهر القادمة",
-  "خلال 3-6 أشهر",
-  "خلال 6-12 شهرًا",
-  "خلال العام القادم",
-  "غير محدد بعد/يعتمد على نتائج التقييم",
+  "Within the next 3 months",
+  "Within 3-6 months",
+  "Within 6-12 months",
+  "Within the next year",
+  "Not yet determined/depends on assessment results",
 ]);
 
 const CommunicationPreferenceEnum = z.enum([
-  "عبر البريد الإلكتروني المسجل",
-  "عبر مكالمة هاتفية",
-  "تحديد موعد لاجتماع عبر الإنترنت",
-  "تحديد موعد لاجتماع حضوري (إذا أمكن)",
+  "Via registered email",
+  "Via phone call",
+  "Schedule an online meeting",
+  "Schedule an in-person meeting (if possible)",
 ]);
 
 const PreviousExperienceSchema = z.object({
@@ -111,7 +110,7 @@ const PreviousExperienceSchema = z.object({
 });
 
 const DepartmentAnalysisSchema = z.object({
-  departmentName: z.string().min(1, "اسم القسم مطلوب"),
+  departmentName: z.string().min(1, "Department name is required"),
   mainEquipment: z.string().optional(),
   currentProcedures: z.string().optional(),
   procedureType: DepartmentProcedureTypeEnum.optional(),
@@ -144,61 +143,61 @@ const DepartmentAnalysisSchema = z.object({
 
 export const FullAssessmentSchema = z.object({
   // Section 1: General Information
-  s1_hospitalName: z.string().min(1, "اسم المستشفى مطلوب"),
-  s1_hospitalType: HospitalTypeEnum.refine(val => val !== undefined, { message: "نوع المستشفى مطلوب" }),
+  s1_hospitalName: z.string().min(1, "Hospital name is required"),
+  s1_hospitalType: HospitalTypeEnum.refine(val => val !== undefined, { message: "Hospital type is required" }),
   s1_hospitalTypeOther: z.string().optional(),
-  s1_location: z.string().min(1, "الموقع مطلوب"),
-  s1_bedCount: z.union([z.string().min(1, "عدد الأسرة التقريبي مطلوب"), z.number().min(1, "عدد الأسرة التقريبي مطلوب")]),
-  s1_concernedDepartments: z.array(z.string()).min(1, "يجب اختيار قسم واحد على الأقل"),
+  s1_location: z.string().min(1, "Location is required"),
+  s1_bedCount: z.union([z.string().min(1, "Approximate bed count is required"), z.number().min(1, "Approximate bed count is required")]),
+  s1_concernedDepartments: z.array(z.string()).min(1, "At least one department must be selected"),
   s1_concernedDepartmentsOther: z.string().optional(),
-  s1_contactName: z.string().min(1, "اسم مسؤول التواصل مطلوب"),
-  s1_contactPosition: z.string().min(1, "منصب مسؤول التواصل مطلوب"),
-  s1_contactEmail: z.string().email("بريد إلكتروني غير صالح"),
-  s1_contactPhone: z.string().min(1, "رقم هاتف العمل مطلوب"),
+  s1_contactName: z.string().min(1, "Contact person's name is required"),
+  s1_contactPosition: z.string().min(1, "Contact person's position is required"),
+  s1_contactEmail: z.string().email("Invalid email address"),
+  s1_contactPhone: z.string().min(1, "Work phone number is required"),
   s1_hasClearVision: z.enum([
-    "نعم، لدينا تصور واضح ومحدد",
-    "لا، ولكننا مهتمون باستكشاف الإمكانيات بشكل عام في قسم/أقسام معينة",
-    "لا، ونرغب في استكشاف عام للإمكانيات في المستشفى ككل",
-  ]).refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+    "Yes, we have a clear and specific vision.",
+    "No, but we are interested in exploring possibilities generally in specific department(s).",
+    "No, and we want to generally explore possibilities in the hospital as a whole.",
+  ]).refine(val => val !== undefined, { message: "This field is required" }),
   s1_visionDetails: z.string().optional(),
   s1_explorePriorityDepartments: z.string().optional(),
 
   // Section 2: Previous Experiences
-  s2_hasPreviousExperience: YesNoEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s2_hasPreviousExperience: YesNoEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s2_experiences: z.array(PreviousExperienceSchema).optional(),
 
   // Section 3: Goals and Current Challenges
-  s3_mainGoals: z.array(z.string()).min(1, "يجب اختيار هدف واحد على الأقل"),
+  s3_mainGoals: z.array(z.string()).min(1, "At least one main goal must be selected"),
   s3_mainGoalsOther: z.string().optional(),
-  s3_currentChallenges: z.string().min(1, "وصف التحديات مطلوب"),
-  s3_hasKPIs: YesNoWorkingOnItEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s3_currentChallenges: z.string().min(1, "Description of current challenges is required"),
+  s3_hasKPIs: YesNoWorkingOnItEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s3_kpiDetails: z.string().optional(),
 
   // Section 4: Technical Infrastructure and Current Resources
-  s4_wifiPerformance: WifiPerformanceEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s4_wifiPerformance: WifiPerformanceEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s4_wifiDetails: z.string().optional(),
-  s4_bandwidthConstraints: WifiPerformanceEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }), // Re-using WifiPerformanceEnum as it's Yes/No/Unsure
+  s4_bandwidthConstraints: WifiPerformanceEnum.refine(val => val !== undefined, { message: "This field is required" }), 
   s4_bandwidthDetails: z.string().optional(),
-  s4_networkSecurityPolicies: WifiPerformanceEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }), // Re-using
+  s4_networkSecurityPolicies: WifiPerformanceEnum.refine(val => val !== undefined, { message: "This field is required" }), 
   s4_networkSecurityDetails: z.string().optional(),
-  s4_hasSpecializedEquipment: YesNoEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s4_hasSpecializedEquipment: YesNoEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s4_equipmentDetails: z.string().optional(),
-  s4_hasHighSpecComputers: WifiPerformanceEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }), // Re-using
+  s4_hasHighSpecComputers: WifiPerformanceEnum.refine(val => val !== undefined, { message: "This field is required" }), 
   s4_computerDetails: z.string().optional(),
-  s4_mainInformationSystems: z.string().optional(), // Could be an array of strings if made multi-select
+  s4_mainInformationSystems: z.string().optional(), 
   s4_mainInformationSystemsOther: z.string().optional(),
-  s4_needsIntegration: YesNoMaybeEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s4_needsIntegration: YesNoMaybeEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s4_integrationDetails: z.string().optional(),
-  s4_itSupportTeam: TechTeamEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s4_itSupportTeam: TechTeamEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s4_itSupportTeamOther: z.string().optional(),
-  s4_itTeamExperience: ExperienceLevelEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
-  s4_itContactPoint: YesNoLaterEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s4_itTeamExperience: ExperienceLevelEnum.refine(val => val !== undefined, { message: "This field is required" }),
+  s4_itContactPoint: YesNoLaterEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s4_itContactName: z.string().optional(),
-  s4_staffTechSavviness: ExperienceLevelEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s4_staffTechSavviness: ExperienceLevelEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s4_resistanceToChangePlan: z.string().optional(),
 
   // Section 5: VR/AR in Marketing
-  s5_marketingInterest: MarketingInterestEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s5_marketingInterest: MarketingInterestEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s5_marketingInterestOther: z.string().optional(),
   s5_marketingGoals: z.string().optional(),
 
@@ -206,16 +205,16 @@ export const FullAssessmentSchema = z.object({
   s6_departmentAnalyses: z.array(DepartmentAnalysisSchema).optional(),
 
   // Section 7: Budget and Timeline
-  s7_hasInitialBudget: BudgetAllocationEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
-  s7_budgetRange: z.string().optional(), // Could be a select or text
-  s7_expectedTimeline: TimelineEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
-  s7_hasCriticalDeadlines: YesNoEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s7_hasInitialBudget: BudgetAllocationEnum.refine(val => val !== undefined, { message: "This field is required" }),
+  s7_budgetRange: z.string().optional(), 
+  s7_expectedTimeline: TimelineEnum.refine(val => val !== undefined, { message: "This field is required" }),
+  s7_hasCriticalDeadlines: YesNoEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s7_deadlineDetails: z.string().optional(),
 
   // Section 8: Other Concerns and Considerations
-  s8_dataSecurityConcerns: YesNoEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }),
+  s8_dataSecurityConcerns: YesNoEnum.refine(val => val !== undefined, { message: "This field is required" }),
   s8_securityConcernDetails: z.string().optional(),
-  s8_regulatoryRequirements: WifiPerformanceEnum.refine(val => val !== undefined, { message: "هذا الحقل مطلوب" }), // Yes/No/Unsure
+  s8_regulatoryRequirements: WifiPerformanceEnum.refine(val => val !== undefined, { message: "This field is required" }), // Yes/No/Unsure
   s8_regulatoryDetails: z.string().optional(),
   s8_otherInnovationProjects: z.string().optional(),
   s8_keyStakeholders: z.string().optional(),
@@ -223,71 +222,123 @@ export const FullAssessmentSchema = z.object({
   // Section 9: Additional Questions and Closing
   s9_questionsForYura: z.string().optional(),
   s9_additionalInfo: z.string().optional(),
-  s9_communicationPreferences: z.array(CommunicationPreferenceEnum).min(1,"يجب اختيار تفضيل واحد على الأقل"),
+  s9_communicationPreferences: z.array(CommunicationPreferenceEnum).min(1,"At least one communication preference must be selected"),
   s9_preferredContactTimes: z.string().optional(),
 
 }).superRefine((data, ctx) => {
-  if (data.s1_hospitalType === "أخرى" && !data.s1_hospitalTypeOther) {
+  if (data.s1_hospitalType === "Other" && !data.s1_hospitalTypeOther) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى تحديد نوع المستشفى الآخر",
+      message: "Please specify the other hospital type",
       path: ["s1_hospitalTypeOther"],
     });
   }
-  if (data.s1_concernedDepartments.includes("أخرى") && !data.s1_concernedDepartmentsOther) {
+  if (data.s1_concernedDepartments.includes("Other (Please specify)") && !data.s1_concernedDepartmentsOther) {
      ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى تحديد القسم الآخر",
+      message: "Please specify the other department",
       path: ["s1_concernedDepartmentsOther"],
     });
   }
-  if (data.s1_hasClearVision === "نعم، لدينا تصور واضح ومحدد" && !data.s1_visionDetails) {
+  if (data.s1_hasClearVision === "Yes, we have a clear and specific vision." && !data.s1_visionDetails) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى وصف التطبيق المقترح",
+      message: "Please describe the proposed application/project",
       path: ["s1_visionDetails"],
     });
   }
-  if (data.s1_hasClearVision === "لا، ولكننا مهتمون باستكشاف الإمكانيات بشكل عام في قسم/أقسام معينة" && !data.s1_explorePriorityDepartments) {
+  if (data.s1_hasClearVision === "No, but we are interested in exploring possibilities generally in specific department(s)." && !data.s1_explorePriorityDepartments) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى تحديد الأقسام ذات الأولوية",
+      message: "Please specify the priority departments for exploration",
       path: ["s1_explorePriorityDepartments"],
     });
   }
-   if (data.s2_hasPreviousExperience === "نعم" && (!data.s2_experiences || data.s2_experiences.length === 0)) {
+   if (data.s2_hasPreviousExperience === "Yes" && (!data.s2_experiences || data.s2_experiences.length === 0)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى إضافة تفاصيل تجربة واحدة على الأقل",
+      message: "Please add details of at least one previous experience",
       path: ["s2_experiences"],
     });
   }
   if (data.s2_experiences) {
     data.s2_experiences.forEach((exp, index) => {
-      if (exp.stillInUse === "لا" && !exp.stillInUseReason) {
+      if (exp.stillInUse === "No" && !exp.stillInUseReason) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "يرجى توضيح سبب عدم الاستخدام",
+          message: "Please explain why it is no longer in use",
           path: [`s2_experiences`, index, "stillInUseReason"],
         });
       }
     });
   }
-   if (data.s3_mainGoals.includes("أخرى") && !data.s3_mainGoalsOther) {
+   if (data.s3_mainGoals.includes("Other (Please specify)") && !data.s3_mainGoalsOther) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى تحديد الهدف الآخر",
+      message: "Please specify the other main goal",
       path: ["s3_mainGoalsOther"],
     });
   }
-  if ((data.s3_hasKPIs === "نعم، لدينا مؤشرات واضحة" || data.s3_hasKPIs === "نعمل على تحديدها") && !data.s3_kpiDetails) {
+  if ((data.s3_hasKPIs === "Yes, we have clear indicators" || data.s3_hasKPIs === "We are working on defining them") && !data.s3_kpiDetails) {
      ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "يرجى ذكر أهم المؤشرات",
+      message: "Please mention the most important KPIs",
       path: ["s3_kpiDetails"],
     });
   }
-  // Add more superRefine for other conditional fields as needed
+  if (data.s4_itSupportTeam === "Other" && !data.s4_itSupportTeamOther) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please specify the other IT support team type",
+      path: ["s4_itSupportTeamOther"],
+    });
+  }
+  if (data.s4_itContactPoint === "Yes" && !data.s4_itContactName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please provide the name of the IT contact person/team",
+      path: ["s4_itContactName"],
+    });
+  }
+  if (data.s5_marketingInterest === "Other" && !data.s5_marketingInterestOther) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please specify the other marketing interest",
+      path: ["s5_marketingInterestOther"],
+    });
+  }
+  if (data.s6_departmentAnalyses) {
+    data.s6_departmentAnalyses.forEach((dept, index) => {
+      if (dept.opportunities?.other && !dept.opportunities.otherField) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please specify the other opportunity area.",
+          path: [`s6_departmentAnalyses`, index, "opportunities", "otherField"],
+        });
+      }
+    });
+  }
+  if (data.s7_hasCriticalDeadlines === "Yes" && !data.s7_deadlineDetails) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please provide details about critical deadlines",
+      path: ["s7_deadlineDetails"],
+    });
+  }
+  if (data.s8_dataSecurityConcerns === "Yes" && !data.s8_securityConcernDetails) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please describe data security concerns",
+      path: ["s8_securityConcernDetails"],
+    });
+  }
+   if ((data.s8_regulatoryRequirements === "Yes" || data.s8_regulatoryRequirements === "Not sure") && !data.s8_regulatoryDetails) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please specify known regulatory requirements or areas to verify",
+      path: ["s8_regulatoryDetails"],
+    });
+  }
 });
 
 
@@ -317,3 +368,5 @@ export const ProfileUpdateSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   avatar: z.string().url({ message: "Please enter a valid URL for your avatar, or leave empty for default." }).optional().or(z.literal("")),
 });
+
+    

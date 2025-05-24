@@ -33,71 +33,71 @@ import { useState } from "react";
 import { summarizeAssessment, type SummarizeAssessmentOutput } from "@/ai/flows/summarize-assessment";
 import { matchVrArSolutions, type MatchVrArSolutionsOutput } from "@/ai/flows/match-vr-ar-solutions";
 
-const hospitalTypes = ["عام", "خاص", "جامعي", "عسكري", "خيري", "أخرى"];
+const hospitalTypes = ["Public", "Private", "University", "Military", "Charity", "Other"];
 const departmentExamples = [
-  "الجراحة (بأنواعها)", "الأشعة والتشخيص", "التعليم الطبي والتدريب", 
-  "طب الطوارئ", "العناية المركزة", "إعادة التأهيل", "التمريض", 
-  "التسويق وعلاقات المرضى", "الإدارة العامة", "أخرى"
+  "Surgery (all types)", "Radiology and Diagnostics", "Medical Education and Training", 
+  "Emergency Medicine", "Intensive Care", "Rehabilitation", "Nursing", 
+  "Marketing and Patient Relations", "General Administration", "Other (Please specify)"
 ];
-const yesNoOptions = ["نعم", "لا"];
-const yesNoMaybeOptions = ["نعم", "لا", "ربما مستقبلاً", "غير متأكد"];
-const kpiStatusOptions = ["نعم، لدينا مؤشرات واضحة", "نعمل على تحديدها", "لا، لم نقم بتحديدها بعد ونحتاج مساعدة في ذلك"];
-const wifiPerformanceOptions = ["نعم", "لا", "جزئيًا", "غير متأكد"];
-const techTeamOptions = ["نعم، فريق داخلي كامل", "نعم، فريق داخلي محدود", "لا، نعتمد على دعم خارجي", "أخرى"];
-const experienceLevelOptions = ["منخفضة جدًا", "منخفضة", "متوسطة", "عالية", "عالية جدًا", "غير متأكد"];
-const yesNoLaterOptions = ["نعم", "لا", "سيتم تحديده لاحقًا"];
+const yesNoOptions = ["Yes", "No"];
+const yesNoMaybeOptions = ["Yes", "No", "Maybe in the future", "Not sure"];
+const kpiStatusOptions = ["Yes, we have clear indicators", "We are working on defining them", "No, we haven't defined them yet and need help with that"];
+const wifiPerformanceOptions = ["Yes", "No", "Partially", "Not sure"];
+const techTeamOptions = ["Yes, full internal team", "Yes, limited internal team", "No, we rely on external support", "Other"];
+const experienceLevelOptions = ["Very Low", "Low", "Medium", "High", "Very High", "Not sure"];
+const yesNoLaterOptions = ["Yes", "No", "Will be determined later"];
 const marketingInterestOptions = [
-  "نعم، نفكر في ذلك بجدية ونعتبره أولوية",
-  "نعم، نفكر في ذلك ولكن ليس أولوية قصوى حاليًا",
-  "ربما، الفكرة مطروحة ولكن لم يتم دراستها بعمق",
-  "لا، لم نفكر في ذلك حاليًا",
-  "أخرى",
+  "Yes, we are seriously considering it and consider it a priority",
+  "Yes, we are considering it but it is not a top priority currently",
+  "Maybe, the idea is on the table but has not been studied in depth",
+  "No, we are not currently considering it",
+  "Other",
 ];
 const budgetAllocationOptions = [
-  "نعم، تم تخصيص ميزانية محددة",
-  "نعم، هناك ميزانية تقديرية ولكنها مرنة",
-  "لا، لم يتم تخصيص ميزانية بعد، ولكننا في مرحلة دراسة التكاليف",
-  "لا، ونحتاج إلى تقديرات تكلفة بناءً على التوصيات",
+  "Yes, a specific budget has been allocated",
+  "Yes, there is an estimated budget but it is flexible",
+  "No, a budget has not been allocated yet, but we are in the cost study phase",
+  "No, and we need cost estimates based on recommendations",
 ];
 const timelineOptions = [
-  "خلال 3 أشهر القادمة", "خلال 3-6 أشهر", "خلال 6-12 شهرًا", 
-  "خلال العام القادم", "غير محدد بعد/يعتمد على نتائج التقييم"
+  "Within the next 3 months", "Within 3-6 months", "Within 6-12 months", 
+  "Within the next year", "Not yet determined/depends on assessment results"
 ];
 const communicationPreferenceOptions = [
-  "عبر البريد الإلكتروني المسجل", "عبر مكالمة هاتفية", 
-  "تحديد موعد لاجتماع عبر الإنترنت", "تحديد موعد لاجتماع حضوري (إذا أمكن)"
+  "Via registered email", "Via phone call", 
+  "Schedule an online meeting", "Schedule an in-person meeting (if possible)"
 ];
 
 const mainGoalsOptions = [
-  { id: "improveDiagnosis", label: "تحسين دقة التشخيص الطبي." },
-  { id: "improveSurgicalOutcomes", label: "تحسين نتائج العمليات الجراحية وتقليل المضاعفات." },
-  { id: "enhanceTraining", label: "تعزيز كفاءة وفعالية تدريب الكوادر الطبية (أطباء، ممرضون، فنيون)." },
-  { id: "reduceLearningCurve", label: "تقليل منحنى التعلم للإجراءات الطبية الجديدة أو المعقدة." },
-  { id: "reduceMedicalErrors", label: "تقليل الأخطاء الطبية المحتملة." },
-  { id: "improvePatientExperience", label: "تحسين تجربة المريض وزيادة رضاه." },
-  { id: "enhancePatientEngagement", label: "تعزيز مشاركة المريض في خطته العلاجية وتوعيته بحالته." },
-  { id: "increaseWorkflowEfficiency", label: "زيادة كفاءة سير العمليات (Workflow efficiency) وتقليل الوقت المستغرق في بعض الإجراءات." },
-  { id: "lowerCosts", label: "خفض التكاليف التشغيلية أو تكاليف التدريب على المدى الطويل." },
-  { id: "enhanceInnovation", label: "تعزيز الابتكار والريادة للمستشفى." },
-  { id: "other", label: "أخرى (يرجى التحديد)" },
+  { id: "improveDiagnosis", label: "Improve medical diagnosis accuracy." },
+  { id: "improveSurgicalOutcomes", label: "Improve surgical outcomes and reduce complications." },
+  { id: "enhanceTraining", label: "Enhance the efficiency and effectiveness of medical staff training (doctors, nurses, technicians)." },
+  { id: "reduceLearningCurve", label: "Reduce the learning curve for new or complex medical procedures." },
+  { id: "reduceMedicalErrors", label: "Reduce potential medical errors." },
+  { id: "improvePatientExperience", label: "Improve patient experience and increase satisfaction." },
+  { id: "enhancePatientEngagement", label: "Enhance patient engagement in their treatment plan and awareness of their condition." },
+  { id: "increaseWorkflowEfficiency", label: "Increase workflow efficiency and reduce time spent on certain procedures." },
+  { id: "lowerCosts", label: "Lower operational or long-term training costs." },
+  { id: "enhanceInnovation", label: "Promote innovation and leadership for the hospital." },
+  { id: "other", label: "Other (Please specify)" },
 ];
 
 const departmentProcedureTypes = [
-  "تقليدية في الغالب وتعتمد على مهارات وخبرات بشرية بشكل كبير",
-  "حديثة وتعتمد على تقنيات وأجهزة متطورة بشكل كبير",
-  "مزيج متوازن من الطرق التقليدية والحديثة",
+  "Mostly traditional and heavily reliant on human skills and experience",
+  "Modern and heavily reliant on advanced technologies and devices",
+  "A balanced mix of traditional and modern methods",
 ];
 
 const departmentOpportunities = [
-    { id: "improveAccuracy", label: "تحسين دقة الإجراءات الطبية أو التشخيصية.", fieldName: "improveAccuracyDetails" },
-    { id: "reduceTime", label: "تقليل وقت الإجراءات.", fieldName: "reduceTimeDetails" },
-    { id: "enhanceSafety", label: "تعزيز سلامة المريض.", fieldName: "enhanceSafetyDetails" },
-    { id: "improveTraining", label: "تحسين تدريب الأطباء أو الجراحين أو الممرضين أو الفنيين.", fieldName: "improveTrainingDetails" },
-    { id: "facilitatePlanning", label: "تسهيل التخطيط للإجراءات المعقدة (مثل العمليات الجراحية).", fieldName: "facilitatePlanningDetails" },
-    { id: "improveCommunication", label: "تحسين التواصل بين أعضاء الفريق الطبي.", fieldName: "improveCommunicationDetails" },
-    { id: "improvePatientExperience", label: "تحسين تجربة المريض أو توعيته بحالته أو خطته العلاجية.", fieldName: "improvePatientExperienceDetails" },
-    { id: "reduceResourceDependency", label: "تقليل الاعتماد على موارد مكلفة (مثل النماذج التشريحية الفيزيائية أو التدريب على الجثث).", fieldName: "reduceResourceDependencyDetails" },
-    { id: "other", label: "مجالات أخرى (يرجى التحديد والتوضيح):", fieldName: "otherDetails", otherSpecifyField: "otherField" },
+    { id: "improveAccuracy", label: "Improve accuracy of medical or diagnostic procedures.", fieldName: "improveAccuracyDetails" },
+    { id: "reduceTime", label: "Reduce procedure time.", fieldName: "reduceTimeDetails" },
+    { id: "enhanceSafety", label: "Enhance patient safety.", fieldName: "enhanceSafetyDetails" },
+    { id: "improveTraining", label: "Improve training for doctors, surgeons, nurses, or technicians.", fieldName: "improveTrainingDetails" },
+    { id: "facilitatePlanning", label: "Facilitate planning for complex procedures (e.g., surgical operations).", fieldName: "facilitatePlanningDetails" },
+    { id: "improveCommunication", label: "Improve communication among medical team members.", fieldName: "improveCommunicationDetails" },
+    { id: "improvePatientExperience", label: "Improve patient experience or awareness of their condition/treatment plan.", fieldName: "improvePatientExperienceDetails" },
+    { id: "reduceResourceDependency", label: "Reduce dependency on costly resources (e.g., physical anatomical models, cadaver training).", fieldName: "reduceResourceDependencyDetails" },
+    { id: "other", label: "Other areas (Please specify and explain):", fieldName: "otherDetails", otherSpecifyField: "otherField" },
 ];
 
 
@@ -206,51 +206,93 @@ export function AssessmentForm() {
 
   function generateAssessmentDataString(values: z.infer<typeof FullAssessmentSchema>): string {
     let dataString = "";
-    dataString += `القسم 1: معلومات عامة\n`;
-    dataString += `اسم المستشفى: ${values.s1_hospitalName}\n`;
-    dataString += `نوع المستشفى: ${values.s1_hospitalType}${values.s1_hospitalType === "أخرى" ? ` (${values.s1_hospitalTypeOther})` : ''}\n`;
-    dataString += `الموقع: ${values.s1_location}\n`;
-    dataString += `عدد الأسرة: ${values.s1_bedCount}\n`;
-    dataString += `الأقسام المعنية: ${values.s1_concernedDepartments.join(', ')}${values.s1_concernedDepartments.includes("أخرى") ? ` (${values.s1_concernedDepartmentsOther})` : ''}\n`;
-    dataString += `مسؤول التواصل: ${values.s1_contactName}, ${values.s1_contactPosition}, ${values.s1_contactEmail}, ${values.s1_contactPhone}\n`;
-    dataString += `تصور واضح للتطبيق: ${values.s1_hasClearVision}\n`;
-    if (values.s1_hasClearVision === "نعم، لدينا تصور واضح ومحدد") dataString += `تفاصيل التصور: ${values.s1_visionDetails}\n`;
-    if (values.s1_hasClearVision === "لا، ولكننا مهتمون باستكشاف الإمكانيات بشكل عام في قسم/أقسام معينة") dataString += `أقسام ذات أولوية للاستكشاف: ${values.s1_explorePriorityDepartments}\n`;
+    dataString += `Section 1: General Information\n`;
+    dataString += `Hospital Name: ${values.s1_hospitalName}\n`;
+    dataString += `Hospital Type: ${values.s1_hospitalType}${values.s1_hospitalType === "Other" ? ` (${values.s1_hospitalTypeOther})` : ''}\n`;
+    dataString += `Location: ${values.s1_location}\n`;
+    dataString += `Bed Count: ${values.s1_bedCount}\n`;
+    dataString += `Concerned Departments: ${values.s1_concernedDepartments.join(', ')}${values.s1_concernedDepartments.includes("Other (Please specify)") ? ` (${values.s1_concernedDepartmentsOther})` : ''}\n`;
+    dataString += `Contact Person: ${values.s1_contactName}, ${values.s1_contactPosition}, ${values.s1_contactEmail}, ${values.s1_contactPhone}\n`;
+    dataString += `Clear Vision for Application: ${values.s1_hasClearVision}\n`;
+    if (values.s1_hasClearVision === "Yes, we have a clear and specific vision.") dataString += `Vision Details: ${values.s1_visionDetails}\n`;
+    if (values.s1_hasClearVision === "No, but we are interested in exploring possibilities generally in specific department(s).") dataString += `Priority Departments for Exploration: ${values.s1_explorePriorityDepartments}\n`;
 
-    dataString += `\nالقسم 2: الخبرات السابقة\n`;
-    dataString += `هل سبق التعامل مع VR/AR/MR: ${values.s2_hasPreviousExperience}\n`;
-    if (values.s2_hasPreviousExperience === "نعم" && values.s2_experiences) {
+    dataString += `\nSection 2: Previous Experiences\n`;
+    dataString += `Previous Experience with VR/AR/MR: ${values.s2_hasPreviousExperience}\n`;
+    if (values.s2_hasPreviousExperience === "Yes" && values.s2_experiences) {
       values.s2_experiences.forEach((exp, i) => {
-        dataString += `التجربة ${i + 1}:\n`;
-        dataString += `  الشركة/المطور: ${exp.companyName}\n`;
-        dataString += `  المنتج/الوصف: ${exp.productDescription}\n`;
-        dataString += `  الإيجابيات: ${exp.positives}\n`;
-        dataString += `  السلبيات/التحديات: ${exp.negatives}\n`;
-        dataString += `  لا يزال قيد الاستخدام: ${exp.stillInUse}${exp.stillInUse === "لا" ? ` (السبب: ${exp.stillInUseReason})` : ''}\n`;
+        dataString += `Experience ${i + 1}:\n`;
+        dataString += `  Company/Developer: ${exp.companyName}\n`;
+        dataString += `  Product/Description: ${exp.productDescription}\n`;
+        dataString += `  Positives: ${exp.positives}\n`;
+        dataString += `  Negatives/Challenges: ${exp.negatives}\n`;
+        dataString += `  Still in Use: ${exp.stillInUse}${exp.stillInUse === "No" ? ` (Reason: ${exp.stillInUseReason})` : ''}\n`;
       });
     }
     
-    dataString += `\nالقسم 3: الأهداف والتحديات\n`;
-    dataString += `الأهداف الرئيسية: ${values.s3_mainGoals.join(', ')}${values.s3_mainGoals.includes("أخرى") ? ` (${values.s3_mainGoalsOther})` : ''}\n`;
-    dataString += `التحديات الحالية: ${values.s3_currentChallenges}\n`;
-    dataString += `مؤشرات أداء محددة: ${values.s3_hasKPIs}\n`;
-    if (values.s3_hasKPIs === "نعم، لدينا مؤشرات واضحة" || values.s3_hasKPIs === "نعمل على تحديدها") dataString += `تفاصيل المؤشرات: ${values.s3_kpiDetails}\n`;
-
-    // ... (Concatenate other sections similarly) ...
-    // For brevity, I won't list all concatenations here, but the pattern is similar.
-    // It's important to capture the essence of each section.
-
-    dataString += `\nالقسم 4: البنية التحتية والموارد\n`;
-    dataString += `أداء Wi-Fi: ${values.s4_wifiPerformance}${values.s4_wifiPerformance === "جزئيًا" || values.s4_wifiPerformance === "لا" ? ` (توضيح: ${values.s4_wifiDetails})` : ''}\n`;
-    // ... and so on for all fields in section 4 to 9.
-
-    dataString += `\nالقسم 7: الميزانية والجدول الزمني\n`;
-    dataString += `ميزانية مخصصة: ${values.s7_hasInitialBudget}\n`;
-    if (values.s7_budgetRange) dataString += `نطاق الميزانية: ${values.s7_budgetRange}\n`;
-    dataString += `الجدول الزمني المتوقع: ${values.s7_expectedTimeline}\n`;
-    dataString += `مواعيد نهائية حرجة: ${values.s7_hasCriticalDeadlines}${values.s7_hasCriticalDeadlines === "نعم" ? ` (التفاصيل: ${values.s7_deadlineDetails})` : ''}\n`;
+    dataString += `\nSection 3: Goals and Challenges\n`;
+    dataString += `Main Goals: ${values.s3_mainGoals.join(', ')}${values.s3_mainGoals.includes("Other (Please specify)") ? ` (${values.s3_mainGoalsOther})` : ''}\n`;
+    dataString += `Current Challenges: ${values.s3_currentChallenges}\n`;
+    dataString += `Defined KPIs: ${values.s3_hasKPIs}\n`;
+    if (values.s3_hasKPIs === "Yes, we have clear indicators" || values.s3_hasKPIs === "We are working on defining them") dataString += `KPI Details: ${values.s3_kpiDetails}\n`;
     
-    // Ensure to capture key decision points and free text fields.
+    dataString += `\nSection 4: Infrastructure and Resources\n`;
+    dataString += `Wi-Fi Performance: ${values.s4_wifiPerformance}${values.s4_wifiPerformance === "Partially" || values.s4_wifiPerformance === "No" ? ` (Details: ${values.s4_wifiDetails})` : ''}\n`;
+    dataString += `Bandwidth Constraints: ${values.s4_bandwidthConstraints}${values.s4_bandwidthConstraints === "Yes" ? ` (Details: ${values.s4_bandwidthDetails})` : ''}\n`;
+    dataString += `Network Security Policies: ${values.s4_networkSecurityPolicies}${values.s4_networkSecurityPolicies === "Yes" ? ` (Details: ${values.s4_networkSecurityDetails})` : ''}\n`;
+    dataString += `Has Specialized VR/AR/MR Equipment: ${values.s4_hasSpecializedEquipment}${values.s4_hasSpecializedEquipment === "Yes" ? ` (Details: ${values.s4_equipmentDetails})` : ''}\n`;
+    dataString += `Has High-Spec Computers: ${values.s4_hasHighSpecComputers}${values.s4_hasHighSpecComputers === "Yes" || values.s4_hasHighSpecComputers === "Partially" ? ` (Details: ${values.s4_computerDetails})` : ''}\n`;
+    dataString += `Main Information Systems: ${values.s4_mainInformationSystems}${values.s4_mainInformationSystemsOther ? ` (Other: ${values.s4_mainInformationSystemsOther})` : ''}\n`;
+    dataString += `Needs Integration with Current Systems: ${values.s4_needsIntegration}${values.s4_needsIntegration === "Yes" || values.s4_needsIntegration === "Maybe in the future" ? ` (Integration Details: ${values.s4_integrationDetails})` : ''}\n`;
+    dataString += `IT Support Team: ${values.s4_itSupportTeam}${values.s4_itSupportTeam === "Other" ? ` (${values.s4_itSupportTeamOther})` : ''}\n`;
+    dataString += `IT Team Experience with New Tech: ${values.s4_itTeamExperience}\n`;
+    dataString += `IT Contact Point for AR/MR Projects: ${values.s4_itContactPoint}${values.s4_itContactPoint === "Yes" ? ` (Contact Name: ${values.s4_itContactName})` : ''}\n`;
+    dataString += `Staff Tech Savviness: ${values.s4_staffTechSavviness}\n`;
+    dataString += `Plan for Resistance to Change: ${values.s4_resistanceToChangePlan}\n`;
+
+    dataString += `\nSection 5: VR/AR in Marketing\n`;
+    dataString += `Interest in VR/AR for Marketing: ${values.s5_marketingInterest}${values.s5_marketingInterest === "Other" ? ` (${values.s5_marketingInterestOther})` : ''}\n`;
+    if (values.s5_marketingInterest && values.s5_marketingInterest !== "No, we are not currently considering it") dataString += `Marketing Goals/Ideas: ${values.s5_marketingGoals}\n`;
+
+    if (values.s6_departmentAnalyses && values.s6_departmentAnalyses.length > 0) {
+      dataString += `\nSection 6: Department Analyses\n`;
+      values.s6_departmentAnalyses.forEach((dept, i) => {
+        dataString += `Department Analysis ${i + 1}:\n`;
+        dataString += `  Department Name: ${dept.departmentName}\n`;
+        dataString += `  Main Equipment: ${dept.mainEquipment}\n`;
+        dataString += `  Current Procedures: ${dept.currentProcedures}\n`;
+        dataString += `  Procedure Type: ${dept.procedureType}\n`;
+        if(dept.procedureType === "Mostly traditional and heavily reliant on human skills and experience") dataString += `  Traditional Problems: ${dept.traditionalProblems}\n`;
+        if(dept.procedureType === "Modern and heavily reliant on advanced technologies and devices") dataString += `  Modern Problems: ${dept.modernProblems}\n`;
+        dataString += `  General Problems: ${dept.generalProblems}\n`;
+        if(dept.opportunities){
+            dataString += `  Opportunities:\n`;
+            if(dept.opportunities.improveAccuracy) dataString += `    - Improve Accuracy: ${dept.opportunities.improveAccuracyDetails}\n`;
+            if(dept.opportunities.reduceTime) dataString += `    - Reduce Time: ${dept.opportunities.reduceTimeDetails}\n`;
+            // ... Add other opportunities similarly
+            if(dept.opportunities.other) dataString += `    - Other (${dept.opportunities.otherField}): ${dept.opportunities.otherDetails}\n`;
+        }
+      });
+    }
+
+    dataString += `\nSection 7: Budget and Timeline\n`;
+    dataString += `Initial Budget Allocated: ${values.s7_hasInitialBudget}\n`;
+    if (values.s7_budgetRange) dataString += `Budget Range: ${values.s7_budgetRange}\n`;
+    dataString += `Expected Timeline for First Project: ${values.s7_expectedTimeline}\n`;
+    dataString += `Critical Deadlines: ${values.s7_hasCriticalDeadlines}${values.s7_hasCriticalDeadlines === "Yes" ? ` (Details: ${values.s7_deadlineDetails})` : ''}\n`;
+    
+    dataString += `\nSection 8: Other Concerns and Considerations\n`;
+    dataString += `Data Security Concerns: ${values.s8_dataSecurityConcerns}${values.s8_dataSecurityConcerns === "Yes" ? ` (Details: ${values.s8_securityConcernDetails})` : ''}\n`;
+    dataString += `Regulatory Requirements: ${values.s8_regulatoryRequirements}${values.s8_regulatoryRequirements === "Yes" || values.s8_regulatoryRequirements === "Not sure" ? ` (Details: ${values.s8_regulatoryDetails})` : ''}\n`;
+    dataString += `Other Innovation Projects: ${values.s8_otherInnovationProjects}\n`;
+    dataString += `Key Stakeholders: ${values.s8_keyStakeholders}\n`;
+
+    dataString += `\nSection 9: Additional Questions and Closing\n`;
+    dataString += `Questions for Yura Team: ${values.s9_questionsForYura}\n`;
+    dataString += `Additional Information: ${values.s9_additionalInfo}\n`;
+    dataString += `Communication Preferences: ${values.s9_communicationPreferences.join(', ')}\n`;
+    dataString += `Preferred Contact Times: ${values.s9_preferredContactTimes}\n`;
+    
     return dataString;
   }
 
@@ -266,21 +308,18 @@ export function AssessmentForm() {
     try {
       const summary = await summarizeAssessment({ assessmentData: assessmentDataString });
       setSubmissionResult(summary);
-      toast({ title: "تم إنشاء ملخص التقييم", description: "يمكنك عرض الملخص أدناه." });
+      toast({ title: "Assessment Summary Generated", description: "You can view the summary below." });
 
       const matches = await matchVrArSolutions({ assessmentData: assessmentDataString });
       setSolutionMatches(matches);
-      toast({ title: "تم العثور على حلول مقترحة", description: "يمكنك عرض الحلول المقترحة أدناه." });
+      toast({ title: "Suggested Solutions Found", description: "You can view the suggested solutions below." });
 
-      // console.log("Form submitted:", values); // Full form data
-      // Form reset is optional, might be better to not reset such a long form immediately
-      // form.reset(); 
     } catch (error) {
       console.error("Submission error:", error);
       toast({
         variant: "destructive",
-        title: "فشل الإرسال",
-        description: (error as Error).message || "لا يمكن معالجة التقييم.",
+        title: "Submission Failed",
+        description: (error as Error).message || "Could not process the assessment.",
       });
     } finally {
       setIsSubmitting(false);
@@ -288,29 +327,29 @@ export function AssessmentForm() {
   }
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8"> {/* Removed dir="rtl" */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           
-          {/* Section 1: معلومات عامة */}
+          {/* Section 1: General Information */}
           <Card>
             <CardHeader>
-              <CardTitle>القسم 1: معلومات عامة عن المستشفى والمشروع</CardTitle>
-              <CardDescription>يرجى الإجابة على الأسئلة التالية بأكبر قدر ممكن من التفصيل والدقة.</CardDescription>
+              <CardTitle>Section 1: General Information about the Hospital and Project</CardTitle>
+              <CardDescription>Please answer the following questions with as much detail and accuracy as possible. Your answers will help us better understand your needs and provide appropriate recommendations.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="s1_hospitalName" render={({ field }) => ( <FormItem> <FormLabel>1. اسم المستشفى:</FormLabel> <FormControl><Input placeholder="اسم المستشفى" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="s1_hospitalType" render={({ field }) => ( <FormItem> <FormLabel>2. نوع المستشفى:</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="اختر نوع المستشفى" /></SelectTrigger></FormControl> <SelectContent>{hospitalTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent> </Select> <FormMessage /> </FormItem> )} />
-              {watchS1HospitalType === "أخرى" && ( <FormField control={form.control} name="s1_hospitalTypeOther" render={({ field }) => ( <FormItem> <FormLabel>يرجى تحديد نوع المستشفى الآخر:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
-              <FormField control={form.control} name="s1_location" render={({ field }) => ( <FormItem> <FormLabel>3. الموقع (المدينة/المحافظة):</FormLabel> <FormControl><Input placeholder="المدينة/المحافظة" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="s1_bedCount" render={({ field }) => ( <FormItem> <FormLabel>4. عدد الأسرة التقريبي:</FormLabel> <FormControl><Input type="number" placeholder="عدد الأسرة" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_hospitalName" render={({ field }) => ( <FormItem> <FormLabel>1. Hospital Name:</FormLabel> <FormControl><Input placeholder="Hospital Name" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_hospitalType" render={({ field }) => ( <FormItem> <FormLabel>2. Hospital Type:</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select hospital type" /></SelectTrigger></FormControl> <SelectContent>{hospitalTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent> </Select> <FormMessage /> </FormItem> )} />
+              {watchS1HospitalType === "Other" && ( <FormField control={form.control} name="s1_hospitalTypeOther" render={({ field }) => ( <FormItem> <FormLabel>Please specify other hospital type:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
+              <FormField control={form.control} name="s1_location" render={({ field }) => ( <FormItem> <FormLabel>3. Location (City/Governorate):</FormLabel> <FormControl><Input placeholder="City/Governorate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_bedCount" render={({ field }) => ( <FormItem> <FormLabel>4. Approximate Bed Count (as an indicator of hospital size):</FormLabel> <FormControl><Input type="number" placeholder="Number of beds" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
              
               <FormField control={form.control} name="s1_concernedDepartments" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>5. الأقسام الطبية والإدارية المعنية بشكل أساسي بتطبيق التقنية:</FormLabel>
+                  <FormLabel>5. Medical and administrative departments primarily concerned with technology application (select multiple):</FormLabel>
                   {departmentExamples.map((item) => (
                     <FormField key={item} control={form.control} name="s1_concernedDepartments" render={({ field: checkField }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse my-2">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 my-2">
                         <FormControl>
                           <Checkbox
                             checked={checkField.value?.includes(item)}
@@ -329,89 +368,91 @@ export function AssessmentForm() {
                       </FormItem>
                     )} />
                   ))}
+                  <FormDescription>Examples: Surgery, Radiology, Medical Education, Emergency, ICU, Rehab, Nursing, Marketing, Admin.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )} />
-              {watchS1ConcernedDepartments?.includes("أخرى") && ( <FormField control={form.control} name="s1_concernedDepartmentsOther" render={({ field }) => ( <FormItem> <FormLabel>يرجى تحديد القسم الآخر:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
+              {watchS1ConcernedDepartments?.includes("Other (Please specify)") && ( <FormField control={form.control} name="s1_concernedDepartmentsOther" render={({ field }) => ( <FormItem> <FormLabel>Please specify other department:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
               
-              <FormLabel className="font-semibold block pt-2">6. معلومات مسؤول التواصل الأساسي:</FormLabel>
-              <FormField control={form.control} name="s1_contactName" render={({ field }) => ( <FormItem> <FormLabel>الاسم الكامل:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="s1_contactPosition" render={({ field }) => ( <FormItem> <FormLabel>المنصب/المسمى الوظيفي:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="s1_contactEmail" render={({ field }) => ( <FormItem> <FormLabel>البريد الإلكتروني الرسمي:</FormLabel> <FormControl><Input type="email" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="s1_contactPhone" render={({ field }) => ( <FormItem> <FormLabel>رقم هاتف العمل:</FormLabel> <FormControl><Input type="tel" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormLabel className="font-semibold block pt-2">6. Primary Contact Information for this assessment/project:</FormLabel>
+              <FormField control={form.control} name="s1_contactName" render={({ field }) => ( <FormItem> <FormLabel>Full Name:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_contactPosition" render={({ field }) => ( <FormItem> <FormLabel>Position/Job Title:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_contactEmail" render={({ field }) => ( <FormItem> <FormLabel>Official Email:</FormLabel> <FormControl><Input type="email" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Work Phone (with country/city code):</FormLabel> <FormControl><Input type="tel" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
 
               <FormField control={form.control} name="s1_hasClearVision" render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>7. هل لديكم تصور واضح ومحدد للتطبيق/الاستخدام الذي ترغبون فيه لتقنية AR/MR؟</FormLabel>
+                  <FormLabel>7. Do you have a clear and specific vision for the application/use of AR or MR technology?</FormLabel>
                   <FormControl>
                     <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                      <FormItem className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse"> <FormControl><RadioGroupItem value="نعم، لدينا تصور واضح ومحدد" /></FormControl> <FormLabel className="font-normal">نعم، لدينا تصور واضح ومحدد.</FormLabel> </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse"> <FormControl><RadioGroupItem value="لا، ولكننا مهتمون باستكشاف الإمكانيات بشكل عام في قسم/أقسام معينة" /></FormControl> <FormLabel className="font-normal">لا، ولكننا مهتمون باستكشاف الإمكانيات بشكل عام في قسم/أقسام معينة.</FormLabel> </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse"> <FormControl><RadioGroupItem value="لا، ونرغب في استكشاف عام للإمكانيات في المستشفى ككل" /></FormControl> <FormLabel className="font-normal">لا، ونرغب في استكشاف عام للإمكانيات في المستشفى ككل.</FormLabel> </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0"> <FormControl><RadioGroupItem value="Yes, we have a clear and specific vision." /></FormControl> <FormLabel className="font-normal">Yes, we have a clear and specific vision.</FormLabel> </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0"> <FormControl><RadioGroupItem value="No, but we are interested in exploring possibilities generally in specific department(s)." /></FormControl> <FormLabel className="font-normal">No, but we are interested in exploring possibilities generally in specific department(s).</FormLabel> </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0"> <FormControl><RadioGroupItem value="No, and we want to generally explore possibilities in the hospital as a whole." /></FormControl> <FormLabel className="font-normal">No, and we want to generally explore possibilities in the hospital as a whole.</FormLabel> </FormItem>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              {watchS1HasClearVision === "نعم، لدينا تصور واضح ومحدد" && ( <FormField control={form.control} name="s1_visionDetails" render={({ field }) => ( <FormItem> <FormLabel>8. يرجى وصف التطبيق/المشروع المقترح بالتفصيل:</FormLabel> <FormControl><Textarea rows={4} {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
-              {watchS1HasClearVision === "لا، ولكننا مهتمون باستكشاف الإمكانيات بشكل عام في قسم/أقسام معينة" && ( <FormField control={form.control} name="s1_explorePriorityDepartments" render={({ field }) => ( <FormItem> <FormLabel>9. يرجى تحديد هذه الأقسام ذات الأولوية للاستكشاف:</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
+              {watchS1HasClearVision === "Yes, we have a clear and specific vision." && ( <FormField control={form.control} name="s1_visionDetails" render={({ field }) => ( <FormItem> <FormLabel>8. Please describe the proposed application/project in detail (Problem it aims to solve? How do you envision using the tech? Target users?):</FormLabel> <FormControl><Textarea rows={4} {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
+              {watchS1HasClearVision === "No, but we are interested in exploring possibilities generally in specific department(s)." && ( <FormField control={form.control} name="s1_explorePriorityDepartments" render={({ field }) => ( <FormItem> <FormLabel>9. Please specify these priority departments for exploration:</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
             </CardContent>
           </Card>
 
-          {/* Section 2: الخبرات السابقة */}
+          {/* Section 2: Previous Experiences */}
           <Card>
-            <CardHeader><CardTitle>القسم 2: الخبرات السابقة مع تقنيات VR/AR/MR</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 2: Previous Experiences with VR/AR/MR Technologies</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="s2_hasPreviousExperience" render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>1. هل سبق للمستشفى التعامل مع VR/AR/MR؟</FormLabel>
+                  <FormLabel>1. Has the hospital or any of its departments previously dealt with or used any VR, AR, or MR technology?</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-row space-x-3 rtl:space-x-reverse">
-                      {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-row space-x-3">
+                      {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                     </RadioGroup>
                   </FormControl>
+                  <FormDescription>(If "No", please proceed to Section 3)</FormDescription>
                   <FormMessage />
                 </FormItem>
               )} />
-              {watchS2HasPreviousExperience === "نعم" && (
+              {watchS2HasPreviousExperience === "Yes" && (
                 <div className="space-y-4">
-                  <FormLabel>2. يرجى توضيح لكل تجربة سابقة:</FormLabel>
+                  <FormLabel>2. If "Yes", please clarify for each previous experience (add more experiences if necessary):</FormLabel>
                   {experienceFields.map((item, index) => (
                     <Card key={item.id} className="p-4 space-y-3">
-                      <h4 className="font-semibold">التجربة ({index + 1})</h4>
-                      <FormField control={form.control} name={`s2_experiences.${index}.companyName`} render={({ field }) => (<FormItem><FormLabel>أ. مع من تم التعامل؟</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name={`s2_experiences.${index}.productDescription`} render={({ field }) => (<FormItem><FormLabel>ب. ما هو المنتج/التطبيق؟ (وصف وتقنية)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name={`s2_experiences.${index}.positives`} render={({ field }) => (<FormItem><FormLabel>ج. أبرز الإيجابيات؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name={`s2_experiences.${index}.negatives`} render={({ field }) => (<FormItem><FormLabel>د. أبرز العيوب/التحديات؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <h4 className="font-semibold">Experience ({index + 1})</h4>
+                      <FormField control={form.control} name={`s2_experiences.${index}.companyName`} render={({ field }) => (<FormItem><FormLabel>a. Who did you deal with (Company/Developer/Entity name)?</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name={`s2_experiences.${index}.productDescription`} render={({ field }) => (<FormItem><FormLabel>b. What was the product, application, or project? (Brief description, VR/AR/MR tech used)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name={`s2_experiences.${index}.positives`} render={({ field }) => (<FormItem><FormLabel>c. What were the main positives or benefits achieved?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name={`s2_experiences.${index}.negatives`} render={({ field }) => (<FormItem><FormLabel>d. What were the main drawbacks, challenges, or problems faced?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name={`s2_experiences.${index}.stillInUse`} render={({ field }) => (
-                        <FormItem className="space-y-2"><FormLabel>هـ. هل ما زال قيد الاستخدام؟</FormLabel>
-                          <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-row space-x-3 rtl:space-x-reverse">
-                           {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                        <FormItem className="space-y-2"><FormLabel>e. Is this product/application/project still in use?</FormLabel>
+                          <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-row space-x-3">
+                           {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                           </RadioGroup>
                           <FormMessage />
                         </FormItem>)} />
-                      {form.watch(`s2_experiences.${index}.stillInUse`) === "لا" && (
-                         <FormField control={form.control} name={`s2_experiences.${index}.stillInUseReason`} render={({ field }) => (<FormItem><FormLabel>لماذا لم يعد قيد الاستخدام؟</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      {form.watch(`s2_experiences.${index}.stillInUse`) === "No" && (
+                         <FormField control={form.control} name={`s2_experiences.${index}.stillInUseReason`} render={({ field }) => (<FormItem><FormLabel>If No, why is it no longer in use?</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                       )}
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeExperience(index)}><Trash2 className="ml-2 h-4 w-4" /> حذف التجربة</Button>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeExperience(index)}><Trash2 className="mr-2 h-4 w-4" /> Remove Experience</Button>
                     </Card>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => appendExperience({ stillInUse: undefined })}> <PlusCircle className="ml-2 h-4 w-4" /> إضافة تجربة أخرى</Button>
+                  <Button type="button" variant="outline" onClick={() => appendExperience({ companyName: "", productDescription: "", positives: "", negatives: "", stillInUse: undefined, stillInUseReason: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Another Experience</Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Section 3: الأهداف والتحديات الحالية */}
+          {/* Section 3: Current Goals and Challenges */}
           <Card>
-            <CardHeader><CardTitle>القسم 3: الأهداف والتحديات الحالية (المتعلقة بالتطبيق المحتمل لـ AR/MR)</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 3: Current Goals and Challenges (related to potential AR/MR application)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="s3_mainGoals" render={() => (
                 <FormItem>
-                  <FormLabel>1. ما هي الأهداف الرئيسية التي تسعون لتحقيقها؟</FormLabel>
+                  <FormLabel>1. What are the main goals you aim to achieve by implementing AR/MR technologies in the identified areas? (Select multiple, or prioritize if possible)</FormLabel>
                   {mainGoalsOptions.map((item) => (
                     <FormField key={item.id} control={form.control} name="s3_mainGoals" render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse my-2">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 my-2">
                         <FormControl>
                           <Checkbox
                             checked={field.value?.includes(item.label)}
@@ -433,184 +474,186 @@ export function AssessmentForm() {
                   <FormMessage />
                 </FormItem>
               )} />
-              {watchS3MainGoals?.includes("أخرى (يرجى التحديد)") && (
-                <FormField control={form.control} name="s3_mainGoalsOther" render={({ field }) => ( <FormItem> <FormLabel>يرجى تحديد الهدف الآخر:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem>)} />
+              {watchS3MainGoals?.includes("Other (Please specify)") && (
+                <FormField control={form.control} name="s3_mainGoalsOther" render={({ field }) => ( <FormItem> <FormLabel>Please specify the other goal:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem>)} />
               )}
-              <FormField control={form.control} name="s3_currentChallenges" render={({ field }) => (<FormItem><FormLabel>2. ما هي أبرز التحديات أو المشكلات الحالية التي تأملون أن تساهم تقنيات AR/MR في معالجتها؟</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s3_currentChallenges" render={({ field }) => (<FormItem><FormLabel>2. What are the main current challenges or problems in the targeted departments/applications that you hope AR/MR technologies will help address or overcome? (Detailed description for each challenge)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="s3_hasKPIs" render={({ field }) => (
-                <FormItem className="space-y-3"><FormLabel>3. هل قمتم بتحديد مؤشرات أداء رئيسية (KPIs)؟</FormLabel>
+                <FormItem className="space-y-3"><FormLabel>3. Have you defined Key Performance Indicators (KPIs), quantitative or qualitative, to measure the success of applying these technologies in achieving the mentioned goals?</FormLabel>
                   <FormControl>
                     <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                      {kpiStatusOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                      {kpiStatusOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-3 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              {(watchS3HasKPIs === "نعم، لدينا مؤشرات واضحة" || watchS3HasKPIs === "نعمل على تحديدها") && (
-                <FormField control={form.control} name="s3_kpiDetails" render={({ field }) => (<FormItem><FormLabel>4. يرجى ذكر أهم هذه المؤشرات:</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+              {(watchS3HasKPIs === "Yes, we have clear indicators" || watchS3HasKPIs === "We are working on defining them") && (
+                <FormField control={form.control} name="s3_kpiDetails" render={({ field }) => (<FormItem><FormLabel>4. Please list the most important of these indicators (or examples):</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
               )}
             </CardContent>
           </Card>
 
-          {/* Section 4: البنية التحتية التقنية والموارد الحالية */}
+          {/* Section 4: Technical Infrastructure and Current Resources */}
           <Card>
-            <CardHeader><CardTitle>القسم 4: البنية التحتية التقنية والموارد الحالية</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 4: Technical Infrastructure and Current Resources</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormLabel className="font-semibold block">1. البنية التحتية لشبكة المستشفى:</FormLabel>
+              <FormLabel className="font-semibold block">1. Hospital Network Infrastructure:</FormLabel>
               <FormField control={form.control} name="s4_wifiPerformance" render={({ field }) => (
-                <FormItem><FormLabel>أ. هل تتوفر شبكة Wi-Fi ذات أداء عالٍ وتغطية جيدة؟</FormLabel>
+                <FormItem><FormLabel>a. Is there a high-performance Wi-Fi network with good and stable coverage in potential technology application areas?</FormLabel>
                 <Controller control={form.control} name="s4_wifiPerformance" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {(watchS4WifiPerformance === "لا" || watchS4WifiPerformance === "جزئيًا") && <FormField control={form.control} name="s4_wifiDetails" render={({ field }) => (<FormItem><FormLabel>توضيح بخصوص Wi-Fi:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {(watchS4WifiPerformance === "No" || watchS4WifiPerformance === "Partially") && <FormField control={form.control} name="s4_wifiDetails" render={({ field }) => (<FormItem><FormLabel>Wi-Fi Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
 
               <FormField control={form.control} name="s4_bandwidthConstraints" render={({ field }) => (
-                <FormItem><FormLabel>ب. هل هناك قيود معروفة على عرض النطاق الترددي للشبكة (Bandwidth)؟</FormLabel>
+                <FormItem><FormLabel>b. Are there known network bandwidth limitations that might affect AR/MR applications?</FormLabel>
                 <Controller control={form.control} name="s4_bandwidthConstraints" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                    {/* Re-using wifiPerformanceOptions for Yes/No/Not sure */}
+                    {["Yes", "No", "Not sure"].map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {(watchS4BandwidthConstraints === "نعم") && <FormField control={form.control} name="s4_bandwidthDetails" render={({ field }) => (<FormItem><FormLabel>توضيح بخصوص Bandwidth:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {(watchS4BandwidthConstraints === "Yes") && <FormField control={form.control} name="s4_bandwidthDetails" render={({ field }) => (<FormItem><FormLabel>Bandwidth Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
 
               <FormField control={form.control} name="s4_networkSecurityPolicies" render={({ field }) => (
-                <FormItem><FormLabel>ج. هل توجد سياسات أمن شبكات صارمة؟</FormLabel>
+                <FormItem><FormLabel>c. Are there strict network security policies that might require special configurations for AR/MR devices or applications?</FormLabel>
                 <Controller control={form.control} name="s4_networkSecurityPolicies" render={({field: controllerField}) => (
-                 <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                 <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                     {/* Re-using wifiPerformanceOptions for Yes/No/Not sure */}
+                    {["Yes", "No", "Not sure"].map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {(watchS4NetworkSecurityPolicies === "نعم") && <FormField control={form.control} name="s4_networkSecurityDetails" render={({ field }) => (<FormItem><FormLabel>توضيح بخصوص سياسات الأمن:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {(watchS4NetworkSecurityPolicies === "Yes") && <FormField control={form.control} name="s4_networkSecurityDetails" render={({ field }) => (<FormItem><FormLabel>Security Policies Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
             
-              <FormLabel className="font-semibold block pt-2">2. الأجهزة والمعدات التقنية الحالية:</FormLabel>
+              <FormLabel className="font-semibold block pt-2">2. Current Technical Devices and Equipment:</FormLabel>
               <FormField control={form.control} name="s4_hasSpecializedEquipment" render={({ field }) => (
-                <FormItem><FormLabel>أ. هل يمتلك المستشفى حاليًا أي أجهزة متخصصة VR/AR/MR؟</FormLabel>
+                <FormItem><FormLabel>a. Does the hospital currently own any specialized VR headsets, AR headsets/glasses, or MR headsets?</FormLabel>
                  <Controller control={form.control} name="s4_hasSpecializedEquipment" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3 rtl:space-x-reverse">
-                    {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3">
+                    {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {watchS4HasSpecializedEquipment === "نعم" && <FormField control={form.control} name="s4_equipmentDetails" render={({ field }) => (<FormItem><FormLabel>يرجى ذكر أنواعها، عددها، وحالتها:</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {watchS4HasSpecializedEquipment === "Yes" && <FormField control={form.control} name="s4_equipmentDetails" render={({ field }) => (<FormItem><FormLabel>Please list types, quantity, and condition (new, used, etc.):</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />}
               
               <FormField control={form.control} name="s4_hasHighSpecComputers" render={({ field }) => (
-                <FormItem><FormLabel>ب. هل تتوفر أجهزة كمبيوتر بمواصفات عالية؟</FormLabel>
+                <FormItem><FormLabel>b. Are high-specification desktop/laptop computers or workstations available (powerful processors, advanced graphics cards, sufficient RAM) that can be dedicated to running AR/MR applications (if necessary)?</FormLabel>
                 <Controller control={form.control} name="s4_hasHighSpecComputers" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {(watchS4HasHighSpecComputers === "نعم" || watchS4HasHighSpecComputers === "جزئيًا") && <FormField control={form.control} name="s4_computerDetails" render={({ field }) => (<FormItem><FormLabel>توضيح بخصوص أجهزة الكمبيوتر:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {(watchS4HasHighSpecComputers === "Yes" || watchS4HasHighSpecComputers === "Partially") && <FormField control={form.control} name="s4_computerDetails" render={({ field }) => (<FormItem><FormLabel>Computer Details Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
 
-              <FormLabel className="font-semibold block pt-2">3. أنظمة المعلومات الصحية الحالية:</FormLabel>
-              <FormField control={form.control} name="s4_mainInformationSystems" render={({ field }) => (<FormItem><FormLabel>أ. ما هي أنظمة المعلومات الرئيسية المستخدمة؟ (HIS, EMR/EHR, PACS, LIS, إلخ)</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
-              {/* Add s4_mainInformationSystemsOther if making the above a multi-select with "Other" */}
+              <FormLabel className="font-semibold block pt-2">3. Current Health Information Systems:</FormLabel>
+              <FormField control={form.control} name="s4_mainInformationSystems" render={({ field }) => (<FormItem><FormLabel>a. What are the main information systems currently used in the hospital? (e.g., HIS, EMR/EHR, PACS, LIS, etc.)</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="List systems or select from options if provided" /></FormControl><FormMessage /></FormItem>)} />
+              {/* TODO: Consider adding s4_mainInformationSystemsOther if making the above a multi-select with "Other" */}
               <FormField control={form.control} name="s4_needsIntegration" render={({ field }) => (
-                <FormItem><FormLabel>ب. هل هناك حاجة أو رغبة في دمج تطبيقات AR/MR مع الأنظمة الحالية؟</FormLabel>
+                <FormItem><FormLabel>b. Is there a need or desire to integrate AR/MR applications with any of these current systems?</FormLabel>
                 <Controller control={form.control} name="s4_needsIntegration" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {yesNoMaybeOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                    {yesNoMaybeOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {(watchS4NeedsIntegration === "نعم" || watchS4NeedsIntegration === "ربما مستقبلاً") && <FormField control={form.control} name="s4_integrationDetails" render={({ field }) => (<FormItem><FormLabel>يرجى توضيح طبيعة التكامل المطلوب:</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {(watchS4NeedsIntegration === "Yes" || watchS4NeedsIntegration === "Maybe in the future") && <FormField control={form.control} name="s4_integrationDetails" render={({ field }) => (<FormItem><FormLabel>Please clarify the nature of the required or envisioned integration (e.g., pulling patient data from EMR for AR display, sending training simulation results to LMS):</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />}
 
-              <FormLabel className="font-semibold block pt-2">4. فريق ودعم تكنولوجيا المعلومات (IT Support):</FormLabel>
+              <FormLabel className="font-semibold block pt-2">4. IT Support Team:</FormLabel>
               <FormField control={form.control} name="s4_itSupportTeam" render={({ field }) => (
-                <FormItem><FormLabel>أ. هل لدى المستشفى فريق دعم فني داخلي متخصص؟</FormLabel>
+                <FormItem><FormLabel>a. Does the hospital have a specialized internal IT support team?</FormLabel>
                 <Controller control={form.control} name="s4_itSupportTeam" render={({field: controllerField}) => (
                   <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
-                    {techTeamOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                    {techTeamOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {watchS4ITSupportTeam === "أخرى" && <FormField control={form.control} name="s4_itSupportTeamOther" render={({ field }) => (<FormItem><FormLabel>توضيح آخر لنوع فريق الدعم:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {watchS4ITSupportTeam === "Other" && <FormField control={form.control} name="s4_itSupportTeamOther" render={({ field }) => (<FormItem><FormLabel>Other Support Team Type Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
               
               <FormField control={form.control} name="s4_itTeamExperience" render={({ field }) => (
-                <FormItem><FormLabel>ب. ما مدى خبرة هذا الفريق بالتقنيات الجديدة؟</FormLabel>
+                <FormItem><FormLabel>b. How experienced is this team (or external entity) in handling new advanced technologies or specialized hardware/software requirements (like those for AR/MR)?</FormLabel>
                 <Controller control={form.control} name="s4_itTeamExperience" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row flex-wrap space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {experienceLevelOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse my-1"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row flex-wrap space-y-1 sm:space-y-0 sm:space-x-3">
+                    {experienceLevelOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 my-1"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
 
               <FormField control={form.control} name="s4_itContactPoint" render={({ field }) => (
-                <FormItem><FormLabel>ج. هل هناك شخص/فريق محدد مسؤول عن دعم مشاريع AR/MR؟</FormLabel>
+                <FormItem><FormLabel>c. Is there a specific person/team in the IT department who could be a contact point or responsible for supporting AR/MR projects?</FormLabel>
                 <Controller control={form.control} name="s4_itContactPoint" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {yesNoLaterOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                    {yesNoLaterOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {watchS4ITContactPoint === "نعم" && <FormField control={form.control} name="s4_itContactName" render={({ field }) => (<FormItem><FormLabel>اسم الشخص/الفريق المسؤول:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {watchS4ITContactPoint === "Yes" && <FormField control={form.control} name="s4_itContactName" render={({ field }) => (<FormItem><FormLabel>Name of Responsible Person/Team:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
 
-              <FormLabel className="font-semibold block pt-2">5. مدى إلمام واستعداد الكوادر:</FormLabel>
+              <FormLabel className="font-semibold block pt-2">5. Tech Savviness & Readiness for Change of Targeted Medical and Administrative Staff:</FormLabel>
               <FormField control={form.control} name="s4_staffTechSavviness" render={({ field }) => (
-                <FormItem><FormLabel>مدى إلمام الكوادر بالتقنيات الحديثة:</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="اختر مستوى الإلمام" /></SelectTrigger></FormControl> <SelectContent>{experienceLevelOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
+                <FormItem><FormLabel>General tech savviness of staff:</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select savviness level" /></SelectTrigger></FormControl> <SelectContent>{experienceLevelOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
                 </FormItem>)} />
-              <FormField control={form.control} name="s4_resistanceToChangePlan" render={({ field }) => (<FormItem><FormLabel>هل تتوقعون مقاومة للتغيير؟ وكيف تخططون للتعامل معها؟</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s4_resistanceToChangePlan" render={({ field }) => (<FormItem><FormLabel>Do you anticipate any resistance to change when introducing these new technologies? How do you plan to handle it?</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
           
           {/* Section 5: VR/AR in Marketing */}
           <Card>
-            <CardHeader><CardTitle>القسم 5: استخدام VR/AR في التسويق والتعريف بالمستشفى</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 5: Using VR/AR in Marketing and Hospital Promotion (if applicable)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="s5_marketingInterest" render={({ field }) => (
-                <FormItem><FormLabel>1. هل هناك اهتمام باستخدام VR/AR في التسويق؟</FormLabel>
+                <FormItem><FormLabel>1. Is there current interest or consideration in using VR or AR models as a means of marketing the hospital or introducing the public to its facilities, capabilities, and services?</FormLabel>
                   <Controller control={form.control} name="s5_marketingInterest" render={({field: controllerField}) => (
                   <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
-                    {marketingInterestOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                    {marketingInterestOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {watchS5MarketingInterest === "أخرى" && <FormField control={form.control} name="s5_marketingInterestOther" render={({ field }) => (<FormItem><FormLabel>يرجى التوضيح:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
-              {watchS5MarketingInterest && watchS5MarketingInterest !== "لا، لم نفكر في ذلك حاليًا" && (
-                <FormField control={form.control} name="s5_marketingGoals" render={({ field }) => (<FormItem><FormLabel>2. ما هي الأهداف أو الأفكار الأولية للتطبيقات التسويقية؟</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+              {watchS5MarketingInterest === "Other" && <FormField control={form.control} name="s5_marketingInterestOther" render={({ field }) => (<FormItem><FormLabel>Please clarify:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {watchS5MarketingInterest && watchS5MarketingInterest !== "No, we are not currently considering it" && (
+                <FormField control={form.control} name="s5_marketingGoals" render={({ field }) => (<FormItem><FormLabel>2. If there is an intention (even future) to use VR/AR in marketing or hospital promotion, what are the desired goals or outcomes? Or what are the initial ideas for applications?</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="e.g., interactive virtual tours for potential patients, interactive display of advanced medical services, training materials for new staff..."/></FormControl><FormMessage /></FormItem>)} />
               )}
             </CardContent>
           </Card>
 
-          {/* Section 6: تحليل الأقسام والعمليات الحالية */}
+          {/* Section 6: Analysis of Current Departments and Processes */}
           <Card>
             <CardHeader>
-              <CardTitle>القسم 6: تحليل الأقسام والعمليات الحالية</CardTitle>
-              <CardDescription>يرجى تكرار الإجابة لمجموعة الأسئلة التالية لكل قسم رئيسي معني.</CardDescription>
+              <CardTitle>Section 6: Analysis of Current Departments and Processes (detailed for each concerned department)</CardTitle>
+              <CardDescription>Instructions: Please repeat answering the following set of questions for each main department in the hospital where you see potential for AR/MR application, or departments identified in Q5 or Q9 of Section 1.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {departmentAnalysisFields.map((item, index) => (
                 <Card key={item.id} className="p-4 space-y-3">
                   <div className="flex justify-between items-center">
-                    <h4 className="font-semibold">تحليل قسم ({index + 1})</h4>
+                    <h4 className="font-semibold">Department Analysis ({index + 1})</h4>
                     <Button type="button" variant="ghost" size="sm" onClick={() => removeDepartmentAnalysis(index)}><Trash2 className="text-destructive" /></Button>
                   </div>
-                  <FormField control={form.control} name={`s6_departmentAnalyses.${index}.departmentName`} render={({ field }) => (<FormItem><FormLabel>1. اسم القسم:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name={`s6_departmentAnalyses.${index}.mainEquipment`} render={({ field }) => (<FormItem><FormLabel>2. أ. الأجهزة والمعدات الرئيسية المستخدمة؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name={`s6_departmentAnalyses.${index}.currentProcedures`} render={({ field }) => (<FormItem><FormLabel>3. ب. الطرق والإجراءات الأساسية المتبعة؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name={`s6_departmentAnalyses.${index}.departmentName`} render={({ field }) => (<FormItem><FormLabel>1. Department Name:</FormLabel><FormControl><Input {...field} placeholder="Should be from previously mentioned departments or added new" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name={`s6_departmentAnalyses.${index}.mainEquipment`} render={({ field }) => (<FormItem><FormLabel>2. a. What are the main medical or technical devices and equipment currently used extensively in this department? (Please provide specific examples)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name={`s6_departmentAnalyses.${index}.currentProcedures`} render={({ field }) => (<FormItem><FormLabel>3. b. What are the basic diagnostic, therapeutic, training, or administrative methods and procedures (protocols) currently followed in this department that you see could benefit from development? (Please describe briefly)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name={`s6_departmentAnalyses.${index}.procedureType`} render={({ field }) => (
-                    <FormItem><FormLabel>4. ج. هل تعتبر الطرق والإجراءات المتبعة:</FormLabel>
+                    <FormItem><FormLabel>4. c. Are the methods and procedures followed in this department (mentioned in "b"):</FormLabel>
                     <Controller control={form.control} name={`s6_departmentAnalyses.${index}.procedureType`} render={({field: controllerField}) => (
                       <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
-                        {departmentProcedureTypes.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                        {departmentProcedureTypes.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                       </RadioGroup>)} /> <FormMessage />
                     </FormItem>)} />
                   
-                  <FormLabel className="font-semibold block pt-2">5. د. أبرز المشاكل أو التحديات:</FormLabel>
+                  <FormLabel className="font-semibold block pt-2">5. d. What are the most prominent problems, challenges, weaknesses, or limitations you currently face in the methods and procedures followed in this department (whether traditional or modern)?</FormLabel>
                   {form.watch(`s6_departmentAnalyses.${index}.procedureType`) === departmentProcedureTypes[0] && 
-                    <FormField control={form.control} name={`s6_departmentAnalyses.${index}.traditionalProblems`} render={({ field }) => (<FormItem><FormLabel>إذا كانت تقليدية، ما هي مشاكلها؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name={`s6_departmentAnalyses.${index}.traditionalProblems`} render={({ field }) => (<FormItem><FormLabel>If traditional, what are its problems? (e.g., difficulty in standardization, reliance on individual experience, time-consuming, potential for human error)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                   }
                   {form.watch(`s6_departmentAnalyses.${index}.procedureType`) === departmentProcedureTypes[1] && 
-                    <FormField control={form.control} name={`s6_departmentAnalyses.${index}.modernProblems`} render={({ field }) => (<FormItem><FormLabel>إذا كانت حديثة، ما هي مشاكلها؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name={`s6_departmentAnalyses.${index}.modernProblems`} render={({ field }) => (<FormItem><FormLabel>If modern, what are its problems? (e.g., cost of devices, complexity of operation, need for intensive training, difficulty integrating with other systems)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                   }
-                   <FormField control={form.control} name={`s6_departmentAnalyses.${index}.generalProblems`} render={({ field }) => (<FormItem><FormLabel>مشاكل عامة تواجه القسم في عملياته:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                   <FormField control={form.control} name={`s6_departmentAnalyses.${index}.generalProblems`} render={({ field }) => (<FormItem><FormLabel>General problems facing the department in its operations:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                 
-                  <FormLabel className="font-semibold block pt-2">6. هـ. هل ترون أي فرص محتملة؟</FormLabel>
+                  <FormLabel className="font-semibold block pt-2">6. e. Do you see any potential opportunities or specific areas within this department where VR, AR, or MR technologies could directly contribute to: (Please clarify with practical examples for each point you select)</FormLabel>
                     {departmentOpportunities.map(opp => (
                         <div key={opp.id} className="space-y-2 my-2 p-2 border rounded">
                         <FormField
                             control={form.control}
-                            name={`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any}
+                            name={`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any} // Type assertion might be needed for nested dynamic fields
                             render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rtl:space-x-reverse">
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                 <FormControl>
                                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
@@ -619,83 +662,84 @@ export function AssessmentForm() {
                             )}
                         />
                         {form.watch(`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any) && opp.otherSpecifyField && (
-                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.otherSpecifyField}` as any} render={({ field }) => (<FormItem><FormLabel>يرجى تحديد المجال الآخر:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.otherSpecifyField}` as any} render={({ field }) => (<FormItem><FormLabel>Please specify other area:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                         )}
                         {form.watch(`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any) && opp.fieldName && (
-                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.fieldName}` as any} render={({ field }) => (<FormItem><FormLabel>توضيح:</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.fieldName}` as any} render={({ field }) => (<FormItem><FormLabel>Clarification:</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>)} />
                         )}
                         </div>
                     ))}
                 </Card>
               ))}
-              <Button type="button" variant="outline" onClick={() => appendDepartmentAnalysis({})}> <PlusCircle className="ml-2 h-4 w-4" /> إضافة تحليل قسم جديد</Button>
+              <Button type="button" variant="outline" onClick={() => appendDepartmentAnalysis({ departmentName: "", opportunities: {} })}> <PlusCircle className="mr-2 h-4 w-4" /> Add New Department Analysis</Button>
             </CardContent>
           </Card>
           
-          {/* Section 7: الميزانية والجدول الزمني المتوقع */}
+          {/* Section 7: Budget and Expected Timeline */}
           <Card>
-            <CardHeader><CardTitle>القسم 7: الميزانية والجدول الزمني المتوقع</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 7: Budget and Expected Timeline (for the project as a whole or the first phase)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="s7_hasInitialBudget" render={({ field }) => (
-                <FormItem><FormLabel>1. هل تم تخصيص ميزانية أولية؟</FormLabel>
+                <FormItem><FormLabel>1. Has an initial or estimated budget been allocated for development projects based on AR/MR technologies in the hospital?</FormLabel>
                 <Controller control={form.control} name="s7_hasInitialBudget" render={({field: controllerField}) => (
                   <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
-                    {budgetAllocationOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                    {budgetAllocationOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              <FormField control={form.control} name="s7_budgetRange" render={({ field }) => (<FormItem><FormLabel>2. نطاق الميزانية التقريبي (اختياري):</FormLabel><FormControl><Input {...field} placeholder="مثال: 50,000 - 100,000 دولار" /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s7_budgetRange" render={({ field }) => (<FormItem><FormLabel>2. Approximate budget range (optional, helps guide solutions):</FormLabel><FormControl><Input {...field} placeholder="e.g., $50,000 - $100,000" /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="s7_expectedTimeline" render={({ field }) => (
-                <FormItem><FormLabel>3. ما هو الجدول الزمني المتوقع لبدء أول مشروع؟</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="اختر الجدول الزمني" /></SelectTrigger></FormControl> <SelectContent>{timelineOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
+                <FormItem><FormLabel>3. What is the expected or desired timeline to start the first pilot project or initial implementation phase of AR/MR technologies?</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger></FormControl> <SelectContent>{timelineOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
                 </FormItem>)} />
               <FormField control={form.control} name="s7_hasCriticalDeadlines" render={({ field }) => (
-                <FormItem><FormLabel>4. هل هناك أي مواعيد نهائية حرجة؟</FormLabel>
+                <FormItem><FormLabel>4. Are there any critical internal or external deadlines related to this project or the need to find solutions to the mentioned challenges?</FormLabel>
                 <Controller control={form.control} name="s7_hasCriticalDeadlines" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3 rtl:space-x-reverse">
-                    {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3">
+                    {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {watchS7HasCriticalDeadlines === "نعم" && <FormField control={form.control} name="s7_deadlineDetails" render={({ field }) => (<FormItem><FormLabel>يرجى التوضيح:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {watchS7HasCriticalDeadlines === "Yes" && <FormField control={form.control} name="s7_deadlineDetails" render={({ field }) => (<FormItem><FormLabel>Please clarify:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />}
             </CardContent>
           </Card>
 
-          {/* Section 8: المخاوف والاعتبارات الأخرى */}
+          {/* Section 8: Other Concerns and Considerations */}
           <Card>
-            <CardHeader><CardTitle>القسم 8: المخاوف والاعتبارات الأخرى</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 8: Other Concerns and Considerations</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="s8_dataSecurityConcerns" render={({ field }) => (
-                <FormItem><FormLabel>1. هل هناك مخاوف محددة تتعلق بأمن البيانات؟</FormLabel>
+                <FormItem><FormLabel>1. Are there any specific concerns related to data security and patient confidentiality when considering these technologies?</FormLabel>
                 <Controller control={form.control} name="s8_dataSecurityConcerns" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3 rtl:space-x-reverse">
-                    {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3">
+                    {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {watchS8DataSecurityConcerns === "نعم" && <FormField control={form.control} name="s8_securityConcernDetails" render={({ field }) => (<FormItem><FormLabel>يرجى وصف المخاوف:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              {watchS8DataSecurityConcerns === "Yes" && <FormField control={form.control} name="s8_securityConcernDetails" render={({ field }) => (<FormItem><FormLabel>Please describe these concerns in detail:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />}
               <FormField control={form.control} name="s8_regulatoryRequirements" render={({ field }) => (
-                <FormItem><FormLabel>2. هل توجد متطلبات تنظيمية أو قانونية؟</FormLabel>
+                <FormItem><FormLabel>2. Are there any local or international regulatory, legal, or accreditation requirements that proposed AR/MR solutions must comply with in the healthcare sector in your country or specifically in your specialty?</FormLabel>
                 <Controller control={form.control} name="s8_regulatoryRequirements" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3 rtl:sm:space-x-reverse">
-                    {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 rtl:space-x-reverse"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
+                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                     {/* Re-using wifiPerformanceOptions for Yes/No/Not sure */}
+                    {["Yes", "No", "Not sure"].map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
-              {(watchS8RegulatoryRequirements === "نعم" || watchS8RegulatoryRequirements === "غير متأكد") && <FormField control={form.control} name="s8_regulatoryDetails" render={({ field }) => (<FormItem><FormLabel>يرجى ذكر ما تعرفونه:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />}
-              <FormField control={form.control} name="s8_otherInnovationProjects" render={({ field }) => (<FormItem><FormLabel>3. هل هناك مشاريع ابتكار أخرى قائمة أو مخطط لها؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="s8_keyStakeholders" render={({ field }) => (<FormItem><FormLabel>4. من هم أصحاب المصلحة الرئيسيون؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+              {(watchS8RegulatoryRequirements === "Yes" || watchS8RegulatoryRequirements === "Not sure") && <FormField control={form.control} name="s8_regulatoryDetails" render={({ field }) => (<FormItem><FormLabel>Please state what you know or what you need to verify:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />}
+              <FormField control={form.control} name="s8_otherInnovationProjects" render={({ field }) => (<FormItem><FormLabel>3. Are there any other ongoing or planned technological innovation or digital transformation projects in the hospital that could integrate with or benefit from AR/MR projects? (e.g., patient app development, AI in diagnosis, etc.)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s8_keyStakeholders" render={({ field }) => (<FormItem><FormLabel>4. Who are the key stakeholders within the hospital who should be involved in the decision-making process regarding the adoption of these technologies? (e.g., hospital management, department heads, doctors, IT team, quality department, etc.)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
           
-          {/* Section 9: أسئلة إضافية واختتام */}
+          {/* Section 9: Additional Questions and Closing */}
           <Card>
-            <CardHeader><CardTitle>القسم 9: أسئلة إضافية واختتام</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Section 9: Additional Questions and Closing</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="s9_questionsForYura" render={({ field }) => (<FormItem><FormLabel>1. هل هناك أي أسئلة تودون طرحها على فريقنا؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="s9_additionalInfo" render={({ field }) => (<FormItem><FormLabel>2. هل هناك أي معلومات إضافية تودون مشاركتها؟</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s9_questionsForYura" render={({ field }) => (<FormItem><FormLabel>1. Are there any specific questions you would like to ask our team at this stage?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s9_additionalInfo" render={({ field }) => (<FormItem><FormLabel>2. Is there any additional information, suggestions, or points not covered in this form that you would like to share with us regarding your vision for integrating AR/MR technologies in the hospital?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="s9_communicationPreferences" render={() => (
                 <FormItem>
-                  <FormLabel>3. كيف تفضلون أن يتم التواصل معكم؟</FormLabel>
+                  <FormLabel>3. How would you prefer to be contacted to discuss the results of this assessment and the next steps?</FormLabel>
                   {communicationPreferenceOptions.map((item) => (
                     <FormField key={item} control={form.control} name="s9_communicationPreferences" render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse my-2">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 my-2">
                         <FormControl>
                            <Checkbox
                             checked={field.value?.includes(item)}
@@ -717,13 +761,13 @@ export function AssessmentForm() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="s9_preferredContactTimes" render={({ field }) => (<FormItem><FormLabel>أفضل الأوقات المقترحة للتواصل (اختياري):</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="s9_preferredContactTimes" render={({ field }) => (<FormItem><FormLabel>Preferred contact times (optional):</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
 
           <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            إرسال التقييم
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Submit Assessment
           </Button>
         </form>
       </Form>
@@ -731,10 +775,10 @@ export function AssessmentForm() {
       {submissionResult && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">ملخص التقييم (تم إنشاؤه بواسطة الذكاء الاصطناعي)</CardTitle>
+            <CardTitle className="text-xl text-primary">Assessment Summary (AI Generated)</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap">{submissionResult.summary}</p>
+            <pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{submissionResult.summary}</pre>
           </CardContent>
         </Card>
       )}
@@ -742,16 +786,18 @@ export function AssessmentForm() {
       {solutionMatches && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">الحلول المقترحة (تم إنشاؤها بواسطة الذكاء الاصطناعي)</CardTitle>
+            <CardTitle className="text-xl text-primary">Suggested Solutions (AI Generated)</CardTitle>
           </CardHeader>
           <CardContent>
-            <h3 className="font-semibold">الحلول:</h3>
-            <p className="whitespace-pre-wrap mb-2">{solutionMatches.suggestedSolutions}</p>
-            <h3 className="font-semibold">الأساس المنطقي:</h3>
-            <p className="whitespace-pre-wrap">{solutionMatches.reasoning}</p>
+            <h3 className="font-semibold">Solutions:</h3>
+            <pre className="whitespace-pre-wrap mb-2 bg-muted p-4 rounded-md text-sm">{solutionMatches.suggestedSolutions}</pre>
+            <h3 className="font-semibold">Reasoning:</h3>
+            <pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{solutionMatches.reasoning}</pre>
           </CardContent>
         </Card>
       )}
     </div>
   );
 }
+
+    
