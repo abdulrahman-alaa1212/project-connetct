@@ -1,14 +1,25 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { JobCard } from "@/components/jobs/JobCard";
 import { CvUploadDialog } from "@/components/jobs/CvUploadDialog";
-import { CreateJobPostingDialog } from "@/components/jobs/CreateJobPostingDialog"; // Import new dialog
+import { CreateJobPostingDialog } from "@/components/jobs/CreateJobPostingDialog"; 
+import { JobDetailsDialog } from "@/components/jobs/JobDetailsDialog"; // New dialog for viewing
 import type { JobPosting } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Loader2, MapPin, Briefcase, PlusCircle } from "lucide-react";
+import { Search, Filter, Loader2, MapPin, Briefcase, PlusCircle, Edit3, Trash2, Eye } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -18,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth"; 
+import { useToast } from "@/hooks/use-toast";
 
 const mockJobs: JobPosting[] = [
   {
@@ -73,78 +85,130 @@ const mockJobs: JobPosting[] = [
 
 export default function JobBoardPage() {
   const { user } = useAuth(); 
-  const [jobs, setJobs] = useState<JobPosting[]>(mockJobs); // Use state for jobs to allow adding new ones
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const { toast } = useToast();
+  const [jobs, setJobs] = useState<JobPosting[]>(mockJobs);
+  const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
+  
+  const [selectedJobForApplication, setSelectedJobForApplication] = useState<JobPosting | null>(null);
   const [isCvUploadOpen, setIsCvUploadOpen] = useState(false);
-  const [isCreateJobOpen, setIsCreateJobOpen] = useState(false); // State for new dialog
+  
+  // State for admin operations
+  const [isUpsertJobDialogOpen, setIsUpsertJobDialogOpen] = useState(false);
+  const [jobToEdit, setJobToEdit] = useState<JobPosting | null>(null);
+  
+  const [jobToView, setJobToView] = useState<JobPosting | null>(null);
+  const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
+
+  const [jobIdToDelete, setJobIdToDelete] = useState<string | null>(null);
+  const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [jobTypeFilter, setJobTypeFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  const updateFilteredJobs = useCallback(() => {
+    let jobsToDisplay = [...jobs];
+
+    if (user?.role === 'admin') {
+      // Admins see all jobs by default for management, could add a "my postings" filter later
+      // jobsToDisplay = jobsToDisplay.filter(job => job.postedByAdmin); 
+    }
+    
+    if (searchTerm) {
+      jobsToDisplay = jobsToDisplay.filter(job => 
+        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (jobTypeFilter !== "all") {
+      jobsToDisplay = jobsToDisplay.filter(job => job.type === jobTypeFilter);
+    }
+    if (locationFilter) {
+      jobsToDisplay = jobsToDisplay.filter(job => job.location.toLowerCase().includes(locationFilter.toLowerCase()));
+    }
+    setFilteredJobs(jobsToDisplay);
+  }, [jobs, searchTerm, jobTypeFilter, locationFilter, user]);
+
   useEffect(() => {
     setIsLoading(true);
     // Simulate fetching jobs
     setTimeout(() => {
-      let jobsToDisplay = [...jobs]; // Operate on a copy of the state
-
-      if (user?.role === 'admin') {
-        jobsToDisplay = jobsToDisplay.filter(job => job.postedByAdmin);
-      }
-      
-      if (searchTerm) {
-        jobsToDisplay = jobsToDisplay.filter(job => 
-          job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          job.description.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-      if (jobTypeFilter !== "all") {
-        jobsToDisplay = jobsToDisplay.filter(job => job.type === jobTypeFilter);
-      }
-      if (locationFilter) {
-        jobsToDisplay = jobsToDisplay.filter(job => job.location.toLowerCase().includes(locationFilter.toLowerCase()));
-      }
-      setFilteredJobs(jobsToDisplay); // This line was missing, now added.
+      updateFilteredJobs();
       setIsLoading(false);
-    }, 500);
-  }, [searchTerm, jobTypeFilter, locationFilter, user, jobs]); 
-
-  // This state will hold the jobs that are actually rendered after filtering.
-  const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
+    }, 300);
+  }, [updateFilteredJobs]);
 
 
   const handleApplyClick = (jobId: string) => {
     if (user?.role === 'admin') return;
     const job = jobs.find((j) => j.id === jobId);
     if (job) {
-      setSelectedJob(job);
+      setSelectedJobForApplication(job);
       setIsCvUploadOpen(true);
     }
   };
 
   const handleJobCreated = (newJob: JobPosting) => {
-    setJobs(prevJobs => [newJob, ...prevJobs]); // Add new job to the state
+    setJobs(prevJobs => [newJob, ...prevJobs]);
+    // updateFilteredJobs will be called by useEffect due to jobs dependency change
   };
+
+  const handleJobUpdated = (updatedJob: JobPosting) => {
+    setJobs(prevJobs => prevJobs.map(job => job.id === updatedJob.id ? updatedJob : job));
+    // updateFilteredJobs will be called by useEffect
+  };
+  
+  const handleOpenCreateDialog = () => {
+    setJobToEdit(null); // Ensure we are in "create" mode
+    setIsUpsertJobDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (job: JobPosting) => {
+    setJobToEdit(job);
+    setIsUpsertJobDialogOpen(true);
+  };
+  
+  const handleOpenViewDialog = (job: JobPosting) => {
+    setJobToView(job);
+    setIsViewDetailsDialogOpen(true);
+  };
+
+  const handleOpenDeleteDialog = (jobId: string) => {
+    setJobIdToDelete(jobId);
+    setIsDeleteConfirmDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (jobIdToDelete) {
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== jobIdToDelete));
+      toast({ title: "Job Posting Deleted", description: "The job posting has been removed." });
+    }
+    setJobIdToDelete(null);
+    setIsDeleteConfirmDialogOpen(false);
+    // updateFilteredJobs will be called by useEffect
+  };
+
 
   const jobTypes = ["all", ...new Set(jobs.map(job => job.type))];
 
   const pageTitle = user?.role === 'admin' ? "Post & Manage Opportunities" : "Job & Training Opportunities";
   const pageDescription = user?.role === 'admin' 
-    ? "Create, view, and manage job and training offers published on the platform." 
+    ? "Create, view, edit, and manage job and training offers published on the platform." 
     : "Find your next role in the exciting field of XR in healthcare.";
 
   return (
     <div className="space-y-6">
       <Card className="shadow-lg">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">{pageTitle}</CardTitle>
               <CardDescription className="text-muted-foreground">{pageDescription}</CardDescription>
             </div>
             {user?.role === 'admin' && (
-              <Button onClick={() => setIsCreateJobOpen(true)}>
+              <Button onClick={handleOpenCreateDialog} className="w-full sm:w-auto">
                 <PlusCircle className="mr-2 h-4 w-4" /> Create New Posting
               </Button>
             )}
@@ -195,8 +259,11 @@ export default function JobBoardPage() {
             <JobCard 
               key={job.id} 
               job={job} 
-              onApply={handleApplyClick}
-              isAdminView={user?.role === 'admin'} 
+              onApply={user?.role !== 'admin' ? handleApplyClick : undefined}
+              isAdminView={user?.role === 'admin'}
+              onAdminView={handleOpenViewDialog}
+              onAdminEdit={handleOpenEditDialog}
+              onAdminDelete={handleOpenDeleteDialog}
             />
           ))}
         </div>
@@ -217,17 +284,49 @@ export default function JobBoardPage() {
 
       {user?.role !== 'admin' && (
         <CvUploadDialog
-          job={selectedJob}
+          job={selectedJobForApplication}
           isOpen={isCvUploadOpen}
           onOpenChange={setIsCvUploadOpen}
         />
       )}
+
+      {/* Dialog for Creating/Editing Job Postings (Admin) */}
       {user?.role === 'admin' && (
          <CreateJobPostingDialog
-          isOpen={isCreateJobOpen}
-          onOpenChange={setIsCreateJobOpen}
+          isOpen={isUpsertJobDialogOpen}
+          onOpenChange={setIsUpsertJobDialogOpen}
           onJobCreated={handleJobCreated}
+          jobToEdit={jobToEdit}
+          onJobUpdated={handleJobUpdated}
         />
+      )}
+
+      {/* Dialog for Viewing Job Details (Admin) */}
+      {user?.role === 'admin' && (
+        <JobDetailsDialog
+          job={jobToView}
+          isOpen={isViewDetailsDialogOpen}
+          onOpenChange={setIsViewDetailsDialogOpen}
+        />
+      )}
+
+      {/* Dialog for Confirming Deletion (Admin) */}
+      {user?.role === 'admin' && (
+        <AlertDialog open={isDeleteConfirmDialogOpen} onOpenChange={setIsDeleteConfirmDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the job posting
+                "{jobs.find(job => job.id === jobIdToDelete)?.title || 'selected job'}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setJobIdToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

@@ -9,11 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 
 interface JobCardProps {
   job: JobPosting;
-  onApply: (jobId: string) => void;
+  onApply?: (jobId: string) => void;
   isAdminView?: boolean;
+  onAdminView?: (job: JobPosting) => void;
+  onAdminEdit?: (job: JobPosting) => void;
+  onAdminDelete?: (jobId: string) => void;
 }
 
-export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
+export function JobCard({ job, onApply, isAdminView, onAdminView, onAdminEdit, onAdminDelete }: JobCardProps) {
   const { toast } = useToast();
 
   const timeSincePosted = (dateString: string) => {
@@ -28,25 +31,6 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays}d ago`;
-  };
-
-  const handleAdminAction = (action: "View" | "Edit" | "Delete", jobId: string) => {
-    console.log(`--- Admin Action Attempt --- Action: ${action}, Job ID: ${jobId}`);
-    if (!jobId) {
-      console.error("Admin Action: Job ID is undefined!");
-      alert("Error: Job ID is missing for this action.");
-      return;
-    }
-    const message = `${action} action triggered for job ID: ${jobId}. (Functionality not fully implemented)`;
-    alert(message); // Using alert for very direct feedback
-    
-    // You can re-enable toast later if alert works:
-    /*
-    toast({
-      title: `Admin Action: ${action}`,
-      description: `Job ID: ${jobId} (Functionality not fully implemented)`,
-    });
-    */
   };
 
   return (
@@ -84,7 +68,7 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
               variant="outline" 
               size="sm" 
               className="flex-1 min-w-[80px]" 
-              onClick={() => handleAdminAction("View", job.id)} 
+              onClick={() => onAdminView?.(job)} 
             >
               <Eye className="mr-2 h-4 w-4" /> View
             </Button>
@@ -92,7 +76,7 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
               variant="outline" 
               size="sm" 
               className="flex-1 min-w-[80px]" 
-              onClick={() => handleAdminAction("Edit", job.id)}
+              onClick={() => onAdminEdit?.(job)}
             >
               <Edit3 className="mr-2 h-4 w-4" /> Edit
             </Button>
@@ -100,13 +84,13 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
               variant="destructive" 
               size="sm" 
               className="flex-1 min-w-[90px]" 
-              onClick={() => handleAdminAction("Delete", job.id)}
+              onClick={() => onAdminDelete?.(job.id)}
             >
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </Button>
           </div>
         ) : (
-          <Button onClick={() => onApply(job.id)} className="w-full">
+          onApply && <Button onClick={() => onApply(job.id)} className="w-full">
             Apply Now <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         )}

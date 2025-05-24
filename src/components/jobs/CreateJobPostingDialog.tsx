@@ -19,7 +19,7 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription, // Correctly imported
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -35,20 +35,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { Loader2, PlusCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, PlusCircle, Edit } from "lucide-react";
 
 interface CreateJobPostingDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onJobCreated: (newJob: JobPosting) => void;
+  onJobCreated?: (newJob: JobPosting) => void; // For creating
+  jobToEdit?: JobPosting | null; // For editing
+  onJobUpdated?: (updatedJob: JobPosting) => void; // For editing
 }
 
 const jobTypes: JobPosting["type"][] = ["Full-time", "Part-time", "Contract", "Internship", "Training"];
 
-export function CreateJobPostingDialog({ isOpen, onOpenChange, onJobCreated }: CreateJobPostingDialogProps) {
+export function CreateJobPostingDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onJobCreated, 
+  jobToEdit, 
+  onJobUpdated 
+}: CreateJobPostingDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isEditing = !!jobToEdit;
 
   const form = useForm<z.infer<typeof CreateJobPostingSchema>>({
     resolver: zodResolver(CreateJobPostingSchema),
@@ -62,34 +72,62 @@ export function CreateJobPostingDialog({ isOpen, onOpenChange, onJobCreated }: C
     },
   });
 
+  useEffect(() => {
+    if (isEditing && jobToEdit) {
+      form.reset({
+        title: jobToEdit.title,
+        company: jobToEdit.company,
+        location: jobToEdit.location,
+        description: jobToEdit.description,
+        type: jobToEdit.type,
+        companyLogo: jobToEdit.companyLogo || "",
+      });
+    } else {
+      form.reset({ // Reset to default when not editing or dialog closes
+        title: "",
+        company: "",
+        location: "",
+        description: "",
+        type: undefined,
+        companyLogo: "",
+      });
+    }
+  }, [isEditing, jobToEdit, form, isOpen]); // Depend on isOpen to reset when dialog closes after editing
+
   async function onSubmit(values: z.infer<typeof CreateJobPostingSchema>) {
     setIsSubmitting(true);
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      const newJob: JobPosting = {
-        id: Date.now().toString(), // Simple unique ID for mock
-        title: values.title,
-        company: values.company,
-        location: values.location,
-        description: values.description,
-        type: values.type,
-        companyLogo: values.companyLogo || `https://placehold.co/100x100.png?text=${values.company.substring(0,3).toUpperCase()}`,
-        dataAiHint: "company logo", // Default hint
-        datePosted: new Date().toISOString(),
-        postedByAdmin: true,
-      };
-
-      onJobCreated(newJob);
-      toast({ title: "Job Posting Created", description: `"${newJob.title}" has been successfully posted.` });
-      form.reset();
+      if (isEditing && jobToEdit && onJobUpdated) {
+        const updatedJob: JobPosting = {
+          ...jobToEdit,
+          ...values,
+          companyLogo: values.companyLogo || `https://placehold.co/100x100.png?text=${values.company.substring(0,3).toUpperCase()}`,
+        };
+        onJobUpdated(updatedJob);
+        toast({ title: "Job Posting Updated", description: `"${updatedJob.title}" has been successfully updated.` });
+      } else if (onJobCreated) {
+        const newJob: JobPosting = {
+          id: Date.now().toString(), // Simple unique ID for mock
+          ...values,
+          companyLogo: values.companyLogo || `https://placehold.co/100x100.png?text=${values.company.substring(0,3).toUpperCase()}`,
+          dataAiHint: "company logo", // Default hint
+          datePosted: new Date().toISOString(),
+          postedByAdmin: true,
+        };
+        onJobCreated(newJob);
+        toast({ title: "Job Posting Created", description: `"${newJob.title}" has been successfully posted.` });
+      }
+      
+      // form.reset(); // Reset is handled by useEffect now based on isOpen
       onOpenChange(false);
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Creation Failed",
-        description: (error as Error).message || "Could not create the job posting.",
+        title: isEditing ? "Update Failed" : "Creation Failed",
+        description: (error as Error).message || (isEditing ? "Could not update the job posting." : "Could not create the job posting."),
       });
     } finally {
       setIsSubmitting(false);
@@ -97,14 +135,18 @@ export function CreateJobPostingDialog({ isOpen, onOpenChange, onJobCreated }: C
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) form.reset(); // Ensure form resets when dialog is manually closed
+      onOpenChange(open);
+    }}>
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
           <DialogTitle className="text-primary flex items-center">
-            <PlusCircle className="mr-2 h-5 w-5" /> Create New Job/Training Posting
+            {isEditing ? <Edit className="mr-2 h-5 w-5" /> : <PlusCircle className="mr-2 h-5 w-5" />}
+            {isEditing ? "Edit Job/Training Posting" : "Create New Job/Training Posting"}
           </DialogTitle>
           <DialogDescription>
-            Fill in the details below to publish a new opportunity.
+            {isEditing ? "Update the details for this opportunity." : "Fill in the details below to publish a new opportunity."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -154,7 +196,7 @@ export function CreateJobPostingDialog({ isOpen, onOpenChange, onJobCreated }: C
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select opportunity type" />
@@ -211,7 +253,7 @@ export function CreateJobPostingDialog({ isOpen, onOpenChange, onJobCreated }: C
               </DialogClose>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Posting
+                {isEditing ? "Save Changes" : "Create Posting"}
               </Button>
             </DialogFooter>
           </form>
