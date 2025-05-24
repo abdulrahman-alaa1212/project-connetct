@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import type * as z from "zod";
 import { FullAssessmentSchema } from "@/lib/schemas";
+import type { FullAssessmentSchemaValues, UserSubmittedAssessment } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -28,10 +29,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2, PlusCircle, Trash2, Save } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { summarizeAssessment, type SummarizeAssessmentOutput } from "@/ai/flows/summarize-assessment";
 import { matchVrArSolutions, type MatchVrArSolutionsOutput } from "@/ai/flows/match-vr-ar-solutions";
+import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams, useRouter } from "next/navigation"; // Import useRouter
 
 const hospitalTypes = ["Public", "Private", "University", "Military", "Charity", "Other"];
 const departmentExamples = [
@@ -102,12 +105,19 @@ const departmentOpportunities = [
 
 
 export function AssessmentForm() {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("editId");
+
+  const [isEditMode, setIsEditMode] = useState(!!editId);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [submissionResult, setSubmissionResult] = useState<SummarizeAssessmentOutput | null>(null);
   const [solutionMatches, setSolutionMatches] = useState<MatchVrArSolutionsOutput | null>(null);
 
-  const form = useForm<z.infer<typeof FullAssessmentSchema>>({
+  const form = useForm<FullAssessmentSchemaValues>({
     resolver: zodResolver(FullAssessmentSchema),
     defaultValues: {
       s1_hospitalName: "",
@@ -174,6 +184,32 @@ export function AssessmentForm() {
     },
   });
 
+  useEffect(() => {
+    setIsEditMode(!!editId);
+    if (editId && user && user.hospitalId) {
+      setIsInitializing(true);
+      const storageKey = `user_assessments_${user.hospitalId}`;
+      const storedAssessments = localStorage.getItem(storageKey);
+      if (storedAssessments) {
+        const assessments: UserSubmittedAssessment[] = JSON.parse(storedAssessments);
+        const assessmentToEdit = assessments.find(a => a.id === editId);
+        if (assessmentToEdit) {
+          form.reset(assessmentToEdit.formData);
+          // Optionally load AI summary/solutions if you want to display them during edit
+          // setSubmissionResult(assessmentToEdit.aiSummary ? { summary: assessmentToEdit.aiSummary } : null);
+          // setSolutionMatches(assessmentToEdit.aiSolutions || null);
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Assessment not found for editing." });
+          router.push("/my-assessments"); // Redirect if not found
+        }
+      }
+      setIsInitializing(false);
+    } else {
+      form.reset(); // Reset to defaults if not in edit mode or no editId
+      setIsInitializing(false);
+    }
+  }, [editId, user, form, toast, router]);
+
   const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
     control: form.control,
     name: "s2_experiences",
@@ -184,6 +220,7 @@ export function AssessmentForm() {
     name: "s6_departmentAnalyses",
   });
 
+  // Watchers (kept for conditional rendering logic)
   const watchS1HospitalType = form.watch("s1_hospitalType");
   const watchS1ConcernedDepartments = form.watch("s1_concernedDepartments");
   const watchS1HasClearVision = form.watch("s1_hasClearVision");
@@ -204,7 +241,7 @@ export function AssessmentForm() {
   const watchS8RegulatoryRequirements = form.watch("s8_regulatoryRequirements");
 
 
-  function generateAssessmentDataString(values: z.infer<typeof FullAssessmentSchema>): string {
+  function generateAssessmentDataString(values: FullAssessmentSchemaValues): string {
     let dataString = "";
     dataString += `Section 1: General Information\n`;
     dataString += `Hospital Name: ${values.s1_hospitalName}\n`;
@@ -269,8 +306,13 @@ export function AssessmentForm() {
             dataString += `  Opportunities:\n`;
             if(dept.opportunities.improveAccuracy) dataString += `    - Improve Accuracy: ${dept.opportunities.improveAccuracyDetails}\n`;
             if(dept.opportunities.reduceTime) dataString += `    - Reduce Time: ${dept.opportunities.reduceTimeDetails}\n`;
-            // ... Add other opportunities similarly
-            if(dept.opportunities.other) dataString += `    - Other (${dept.opportunities.otherField}): ${dept.opportunities.otherDetails}\n`;
+            if(dept.opportunities.enhanceSafety) dataString += `    - Enhance Safety: ${dept.opportunities.enhanceSafetyDetails}\n`;
+            if(dept.opportunities.improveTraining) dataString += `    - Improve Training: ${dept.opportunities.improveTrainingDetails}\n`;
+            if(dept.opportunities.facilitatePlanning) dataString += `    - Facilitate Planning: ${dept.opportunities.facilitatePlanningDetails}\n`;
+            if(dept.opportunities.improveCommunication) dataString += `    - Improve Communication: ${dept.opportunities.improveCommunicationDetails}\n`;
+            if(dept.opportunities.improvePatientExperience) dataString += `    - Improve Patient Experience: ${dept.opportunities.improvePatientExperienceDetails}\n`;
+            if(dept.opportunities.reduceResourceDependency) dataString += `    - Reduce Resource Dependency: ${dept.opportunities.reduceResourceDependencyDetails}\n`;
+            if(dept.opportunities.other && dept.opportunities.otherField) dataString += `    - Other (${dept.opportunities.otherField}): ${dept.opportunities.otherDetails}\n`;
         }
       });
     }
@@ -297,37 +339,109 @@ export function AssessmentForm() {
   }
 
 
-  async function onSubmit(values: z.infer<typeof FullAssessmentSchema>) {
+  async function onSubmit(values: FullAssessmentSchemaValues) {
+    if (!user || !user.hospitalId) {
+      toast({ variant: "destructive", title: "Error", description: "User not authenticated or hospital ID missing." });
+      return;
+    }
     setIsSubmitting(true);
     setSubmissionResult(null);
     setSolutionMatches(null);
 
     const assessmentDataString = generateAssessmentDataString(values);
-    console.log("Generated Assessment String for AI:", assessmentDataString);
-
+    
     try {
-      const summary = await summarizeAssessment({ assessmentData: assessmentDataString });
-      setSubmissionResult(summary);
-      toast({ title: "Assessment Summary Generated", description: "You can view the summary below." });
+      const summaryOutput = await summarizeAssessment({ assessmentData: assessmentDataString });
+      setSubmissionResult(summaryOutput);
+      const solutionsOutput = await matchVrArSolutions({ assessmentData: assessmentDataString });
+      setSolutionMatches(solutionsOutput);
 
-      const matches = await matchVrArSolutions({ assessmentData: assessmentDataString });
-      setSolutionMatches(matches);
-      toast({ title: "Suggested Solutions Found", description: "You can view the suggested solutions below." });
+      const storageKey = `user_assessments_${user.hospitalId}`;
+      const storedAssessments = localStorage.getItem(storageKey);
+      let assessments: UserSubmittedAssessment[] = storedAssessments ? JSON.parse(storedAssessments) : [];
+
+      if (isEditMode && editId) {
+        // Update existing assessment
+        assessments = assessments.map(asm => 
+          asm.id === editId 
+          ? { 
+              ...asm, 
+              formData: values, 
+              hospitalName: values.s1_hospitalName,
+              primaryGoalsSummary: values.s3_mainGoals.slice(0, 2).join(', ') + (values.s3_mainGoals.length > 2 ? '...' : ''),
+              aiSummary: summaryOutput.summary,
+              aiSolutions: solutionsOutput,
+              submissionDate: new Date().toISOString(), // Update submission date on edit
+              status: "Submitted" // Or keep original status, or 'Updated' - TBD
+            } 
+          : asm
+        );
+        toast({ title: "Assessment Updated", description: "Your assessment has been successfully updated and re-analyzed." });
+      } else {
+        // Create new assessment
+        const newAssessmentId = Date.now().toString();
+        const newAssessment: UserSubmittedAssessment = {
+          id: newAssessmentId,
+          hospitalId: user.hospitalId,
+          hospitalName: values.s1_hospitalName,
+          submissionDate: new Date().toISOString(),
+          status: "Submitted",
+          primaryGoalsSummary: values.s3_mainGoals.slice(0, 2).join(', ') + (values.s3_mainGoals.length > 2 ? '...' : ''),
+          formData: values,
+          aiSummary: summaryOutput.summary,
+          aiSolutions: solutionsOutput,
+          adminResponseText: "", // Initialize admin response fields
+          adminResponsePdfName: ""
+        };
+        assessments.push(newAssessment);
+        toast({ title: "Assessment Submitted", description: "Your assessment has been successfully submitted and analyzed." });
+      }
+      
+      localStorage.setItem(storageKey, JSON.stringify(assessments));
+      
+      if (isEditMode) {
+        router.push("/my-assessments"); // Navigate back after editing
+      } else {
+        // For new submissions, AI results are already displayed below the form.
+        // Optionally, could clear form here: form.reset(); setSubmissionResult(null); setSolutionMatches(null);
+      }
 
     } catch (error) {
       console.error("Submission error:", error);
       toast({
         variant: "destructive",
-        title: "Submission Failed",
-        description: (error as Error).message || "Could not process the assessment.",
+        title: isEditMode ? "Update Failed" : "Submission Failed",
+        description: (error as Error).message || `Could not ${isEditMode ? 'update' : 'process'} the assessment.`,
       });
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (isInitializing) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading assessment form...</p>
+      </div>
+    );
+  }
+  
+  const pageTitle = isEditMode ? "Edit Hospital Technology Needs Assessment" : "Hospital Technology Needs Assessment";
+  const pageDescription = isEditMode 
+    ? "Please review and update the details of your assessment. Your answers will help us refine our understanding and recommendations."
+    : "Please answer the following questions with as much detail and accuracy as possible. Your answers will help us better understand your needs and provide appropriate recommendations.";
+  const submitButtonText = isEditMode ? "Update Assessment" : "Submit Assessment";
+
   return (
-    <div className="space-y-8"> {/* Removed dir="rtl" */}
+    <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">{pageTitle}</CardTitle>
+          <CardDescription>{pageDescription}</CardDescription>
+        </CardHeader>
+      </Card>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           
@@ -335,11 +449,10 @@ export function AssessmentForm() {
           <Card>
             <CardHeader>
               <CardTitle>Section 1: General Information about the Hospital and Project</CardTitle>
-              <CardDescription>Please answer the following questions with as much detail and accuracy as possible. Your answers will help us better understand your needs and provide appropriate recommendations.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="s1_hospitalName" render={({ field }) => ( <FormItem> <FormLabel>1. Hospital Name:</FormLabel> <FormControl><Input placeholder="Hospital Name" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="s1_hospitalType" render={({ field }) => ( <FormItem> <FormLabel>2. Hospital Type:</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select hospital type" /></SelectTrigger></FormControl> <SelectContent>{hospitalTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent> </Select> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="s1_hospitalType" render={({ field }) => ( <FormItem> <FormLabel>2. Hospital Type:</FormLabel> <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select hospital type" /></SelectTrigger></FormControl> <SelectContent>{hospitalTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent> </Select> <FormMessage /> </FormItem> )} />
               {watchS1HospitalType === "Other" && ( <FormField control={form.control} name="s1_hospitalTypeOther" render={({ field }) => ( <FormItem> <FormLabel>Please specify other hospital type:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
               <FormField control={form.control} name="s1_location" render={({ field }) => ( <FormItem> <FormLabel>3. Location (City/Governorate):</FormLabel> <FormControl><Input placeholder="City/Governorate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               <FormField control={form.control} name="s1_bedCount" render={({ field }) => ( <FormItem> <FormLabel>4. Approximate Bed Count (as an indicator of hospital size):</FormLabel> <FormControl><Input type="number" placeholder="Number of beds" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -384,7 +497,7 @@ export function AssessmentForm() {
                 <FormItem className="space-y-3">
                   <FormLabel>7. Do you have a clear and specific vision for the application/use of AR or MR technology?</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                    <RadioGroup onValueChange={field.onChange} value={field.value} defaultValue={field.value} className="flex flex-col space-y-1">
                       <FormItem className="flex items-center space-x-3 space-y-0"> <FormControl><RadioGroupItem value="Yes, we have a clear and specific vision." /></FormControl> <FormLabel className="font-normal">Yes, we have a clear and specific vision.</FormLabel> </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0"> <FormControl><RadioGroupItem value="No, but we are interested in exploring possibilities generally in specific department(s)." /></FormControl> <FormLabel className="font-normal">No, but we are interested in exploring possibilities generally in specific department(s).</FormLabel> </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0"> <FormControl><RadioGroupItem value="No, and we want to generally explore possibilities in the hospital as a whole." /></FormControl> <FormLabel className="font-normal">No, and we want to generally explore possibilities in the hospital as a whole.</FormLabel> </FormItem>
@@ -406,7 +519,7 @@ export function AssessmentForm() {
                 <FormItem className="space-y-3">
                   <FormLabel>1. Has the hospital or any of its departments previously dealt with or used any VR, AR, or MR technology?</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-row space-x-3">
+                    <RadioGroup onValueChange={field.onChange} value={field.value} defaultValue={field.value} className="flex flex-row space-x-3">
                       {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                     </RadioGroup>
                   </FormControl>
@@ -426,7 +539,7 @@ export function AssessmentForm() {
                       <FormField control={form.control} name={`s2_experiences.${index}.negatives`} render={({ field }) => (<FormItem><FormLabel>d. What were the main drawbacks, challenges, or problems faced?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name={`s2_experiences.${index}.stillInUse`} render={({ field }) => (
                         <FormItem className="space-y-2"><FormLabel>e. Is this product/application/project still in use?</FormLabel>
-                          <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-row space-x-3">
+                          <RadioGroup onValueChange={field.onChange} value={field.value} defaultValue={field.value} className="flex flex-row space-x-3">
                            {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                           </RadioGroup>
                           <FormMessage />
@@ -481,7 +594,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s3_hasKPIs" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>3. Have you defined Key Performance Indicators (KPIs), quantitative or qualitative, to measure the success of applying these technologies in achieving the mentioned goals?</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                    <RadioGroup onValueChange={field.onChange} value={field.value} defaultValue={field.value} className="flex flex-col space-y-1">
                       {kpiStatusOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-3 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                     </RadioGroup>
                   </FormControl>
@@ -502,7 +615,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_wifiPerformance" render={({ field }) => (
                 <FormItem><FormLabel>a. Is there a high-performance Wi-Fi network with good and stable coverage in potential technology application areas?</FormLabel>
                 <Controller control={form.control} name="s4_wifiPerformance" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -511,8 +624,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_bandwidthConstraints" render={({ field }) => (
                 <FormItem><FormLabel>b. Are there known network bandwidth limitations that might affect AR/MR applications?</FormLabel>
                 <Controller control={form.control} name="s4_bandwidthConstraints" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
-                    {/* Re-using wifiPerformanceOptions for Yes/No/Not sure */}
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {["Yes", "No", "Not sure"].map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -521,8 +633,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_networkSecurityPolicies" render={({ field }) => (
                 <FormItem><FormLabel>c. Are there strict network security policies that might require special configurations for AR/MR devices or applications?</FormLabel>
                 <Controller control={form.control} name="s4_networkSecurityPolicies" render={({field: controllerField}) => (
-                 <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
-                     {/* Re-using wifiPerformanceOptions for Yes/No/Not sure */}
+                 <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {["Yes", "No", "Not sure"].map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -532,7 +643,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_hasSpecializedEquipment" render={({ field }) => (
                 <FormItem><FormLabel>a. Does the hospital currently own any specialized VR headsets, AR headsets/glasses, or MR headsets?</FormLabel>
                  <Controller control={form.control} name="s4_hasSpecializedEquipment" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-row space-x-3">
                     {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -541,7 +652,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_hasHighSpecComputers" render={({ field }) => (
                 <FormItem><FormLabel>b. Are high-specification desktop/laptop computers or workstations available (powerful processors, advanced graphics cards, sufficient RAM) that can be dedicated to running AR/MR applications (if necessary)?</FormLabel>
                 <Controller control={form.control} name="s4_hasHighSpecComputers" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {wifiPerformanceOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -549,11 +660,10 @@ export function AssessmentForm() {
 
               <FormLabel className="font-semibold block pt-2">3. Current Health Information Systems:</FormLabel>
               <FormField control={form.control} name="s4_mainInformationSystems" render={({ field }) => (<FormItem><FormLabel>a. What are the main information systems currently used in the hospital? (e.g., HIS, EMR/EHR, PACS, LIS, etc.)</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="List systems or select from options if provided" /></FormControl><FormMessage /></FormItem>)} />
-              {/* TODO: Consider adding s4_mainInformationSystemsOther if making the above a multi-select with "Other" */}
               <FormField control={form.control} name="s4_needsIntegration" render={({ field }) => (
                 <FormItem><FormLabel>b. Is there a need or desire to integrate AR/MR applications with any of these current systems?</FormLabel>
                 <Controller control={form.control} name="s4_needsIntegration" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {yesNoMaybeOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -563,7 +673,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_itSupportTeam" render={({ field }) => (
                 <FormItem><FormLabel>a. Does the hospital have a specialized internal IT support team?</FormLabel>
                 <Controller control={form.control} name="s4_itSupportTeam" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col space-y-1">
                     {techTeamOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -572,7 +682,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_itTeamExperience" render={({ field }) => (
                 <FormItem><FormLabel>b. How experienced is this team (or external entity) in handling new advanced technologies or specialized hardware/software requirements (like those for AR/MR)?</FormLabel>
                 <Controller control={form.control} name="s4_itTeamExperience" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row flex-wrap space-y-1 sm:space-y-0 sm:space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row flex-wrap space-y-1 sm:space-y-0 sm:space-x-3">
                     {experienceLevelOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0 my-1"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -580,7 +690,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_itContactPoint" render={({ field }) => (
                 <FormItem><FormLabel>c. Is there a specific person/team in the IT department who could be a contact point or responsible for supporting AR/MR projects?</FormLabel>
                 <Controller control={form.control} name="s4_itContactPoint" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {yesNoLaterOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -589,7 +699,7 @@ export function AssessmentForm() {
               <FormLabel className="font-semibold block pt-2">5. Tech Savviness & Readiness for Change of Targeted Medical and Administrative Staff:</FormLabel>
               <FormField control={form.control} name="s4_staffTechSavviness" render={({ field }) => (
                 <FormItem><FormLabel>General tech savviness of staff:</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select savviness level" /></SelectTrigger></FormControl> <SelectContent>{experienceLevelOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select savviness level" /></SelectTrigger></FormControl> <SelectContent>{experienceLevelOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
                 </FormItem>)} />
               <FormField control={form.control} name="s4_resistanceToChangePlan" render={({ field }) => (<FormItem><FormLabel>Do you anticipate any resistance to change when introducing these new technologies? How do you plan to handle it?</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
@@ -602,7 +712,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s5_marketingInterest" render={({ field }) => (
                 <FormItem><FormLabel>1. Is there current interest or consideration in using VR or AR models as a means of marketing the hospital or introducing the public to its facilities, capabilities, and services?</FormLabel>
                   <Controller control={form.control} name="s5_marketingInterest" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col space-y-1">
                     {marketingInterestOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -632,7 +742,7 @@ export function AssessmentForm() {
                   <FormField control={form.control} name={`s6_departmentAnalyses.${index}.procedureType`} render={({ field }) => (
                     <FormItem><FormLabel>4. c. Are the methods and procedures followed in this department (mentioned in "b"):</FormLabel>
                     <Controller control={form.control} name={`s6_departmentAnalyses.${index}.procedureType`} render={({field: controllerField}) => (
-                      <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
+                      <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col space-y-1">
                         {departmentProcedureTypes.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                       </RadioGroup>)} /> <FormMessage />
                     </FormItem>)} />
@@ -651,7 +761,7 @@ export function AssessmentForm() {
                         <div key={opp.id} className="space-y-2 my-2 p-2 border rounded">
                         <FormField
                             control={form.control}
-                            name={`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any} // Type assertion might be needed for nested dynamic fields
+                            name={`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any} 
                             render={({ field }) => (
                             <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                 <FormControl>
@@ -671,7 +781,7 @@ export function AssessmentForm() {
                     ))}
                 </Card>
               ))}
-              <Button type="button" variant="outline" onClick={() => appendDepartmentAnalysis({ departmentName: "", opportunities: {} })}> <PlusCircle className="mr-2 h-4 w-4" /> Add New Department Analysis</Button>
+              <Button type="button" variant="outline" onClick={() => appendDepartmentAnalysis({ departmentName: "", mainEquipment: "", currentProcedures: "", procedureType: undefined, traditionalProblems: "", modernProblems: "", generalProblems: "", opportunities: {} })}> <PlusCircle className="mr-2 h-4 w-4" /> Add New Department Analysis</Button>
             </CardContent>
           </Card>
           
@@ -682,19 +792,19 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s7_hasInitialBudget" render={({ field }) => (
                 <FormItem><FormLabel>1. Has an initial or estimated budget been allocated for development projects based on AR/MR technologies in the hospital?</FormLabel>
                 <Controller control={form.control} name="s7_hasInitialBudget" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col space-y-1">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col space-y-1">
                     {budgetAllocationOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
               <FormField control={form.control} name="s7_budgetRange" render={({ field }) => (<FormItem><FormLabel>2. Approximate budget range (optional, helps guide solutions):</FormLabel><FormControl><Input {...field} placeholder="e.g., $50,000 - $100,000" /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="s7_expectedTimeline" render={({ field }) => (
                 <FormItem><FormLabel>3. What is the expected or desired timeline to start the first pilot project or initial implementation phase of AR/MR technologies?</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger></FormControl> <SelectContent>{timelineOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger></FormControl> <SelectContent>{timelineOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent> </Select> <FormMessage />
                 </FormItem>)} />
               <FormField control={form.control} name="s7_hasCriticalDeadlines" render={({ field }) => (
                 <FormItem><FormLabel>4. Are there any critical internal or external deadlines related to this project or the need to find solutions to the mentioned challenges?</FormLabel>
                 <Controller control={form.control} name="s7_hasCriticalDeadlines" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-row space-x-3">
                     {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -709,7 +819,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s8_dataSecurityConcerns" render={({ field }) => (
                 <FormItem><FormLabel>1. Are there any specific concerns related to data security and patient confidentiality when considering these technologies?</FormLabel>
                 <Controller control={form.control} name="s8_dataSecurityConcerns" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-row space-x-3">
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-row space-x-3">
                     {yesNoOptions.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -717,8 +827,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s8_regulatoryRequirements" render={({ field }) => (
                 <FormItem><FormLabel>2. Are there any local or international regulatory, legal, or accreditation requirements that proposed AR/MR solutions must comply with in the healthcare sector in your country or specifically in your specialty?</FormLabel>
                 <Controller control={form.control} name="s8_regulatoryRequirements" render={({field: controllerField}) => (
-                  <RadioGroup onValueChange={controllerField.onChange} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
-                     {/* Re-using wifiPerformanceOptions for Yes/No/Not sure */}
+                  <RadioGroup onValueChange={controllerField.onChange} value={controllerField.value} defaultValue={controllerField.value} className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
                     {["Yes", "No", "Not sure"].map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
@@ -763,16 +872,17 @@ export function AssessmentForm() {
               )} />
               <FormField control={form.control} name="s9_preferredContactTimes" render={({ field }) => (<FormItem><FormLabel>Preferred contact times (optional):</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
+             <CardFooter>
+                <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {submitButtonText}
+                </Button>
+             </CardFooter>
           </Card>
-
-          <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Submit Assessment
-          </Button>
         </form>
       </Form>
 
-      {submissionResult && (
+      {(!isEditMode && submissionResult) && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-xl text-primary">Assessment Summary (AI Generated)</CardTitle>
@@ -783,7 +893,7 @@ export function AssessmentForm() {
         </Card>
       )}
 
-      {solutionMatches && (
+      {(!isEditMode && solutionMatches) && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-xl text-primary">Suggested Solutions (AI Generated)</CardTitle>
