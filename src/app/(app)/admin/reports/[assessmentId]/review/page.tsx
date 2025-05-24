@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { Assessment } from "@/types";
 import { mockAssessments as allMockAssessments } from "@/app/(app)/admin/reports/page"; // Import shared mock data
-import { Loader2, ArrowLeft, Save, Download, FileText, Brain, Lightbulb, Upload, Send, FilePdf } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Download, FileText, Brain, Lightbulb, Upload, Send, File } from "lucide-react";
 
 export default function ReviewAssessmentPage() {
   const router = useRouter();
@@ -286,13 +286,13 @@ export default function ReviewAssessmentPage() {
             />
             {selectedPdfFile && (
               <div className="flex items-center text-sm text-muted-foreground p-2 border rounded-md">
-                <FilePdf className="mr-2 h-4 w-4 text-primary shrink-0" />
+                <File className="mr-2 h-4 w-4 text-primary shrink-0" />
                 <span className="truncate">Selected: {selectedPdfFile.name}</span>
               </div>
             )}
             {!selectedPdfFile && sentPdfName && (
                <div className="flex items-center text-sm text-green-700 bg-green-50 p-2 border border-green-200 rounded-md">
-                <FilePdf className="mr-2 h-4 w-4 shrink-0" />
+                <File className="mr-2 h-4 w-4 shrink-0" />
                 <span className="truncate">Previously sent: {sentPdfName} (You can send a new one to replace it)</span>
               </div>
             )}
@@ -313,5 +313,3 @@ export default function ReviewAssessmentPage() {
     </div>
   );
 }
-
-    
