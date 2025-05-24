@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Briefcase, MapPin, CalendarDays, ArrowRight, Edit3, Trash2, Eye } from "lucide-react"; // Added more icons
 import Image from "next/image";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 interface JobCardProps {
   job: JobPosting;
@@ -13,6 +14,8 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
+  const { toast } = useToast(); // Initialize toast
+
   const timeSincePosted = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -25,6 +28,15 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays}d ago`;
+  };
+
+  const handleAdminAction = (action: "View" | "Edit" | "Delete", jobId: string) => {
+    const message = `${action} action triggered for job ID: ${jobId}`;
+    console.log(message);
+    toast({
+      title: `Admin Action: ${action}`,
+      description: `Job ID: ${jobId} (Functionality not fully implemented)`,
+    });
   };
 
   return (
@@ -58,13 +70,28 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
       <CardFooter>
         {isAdminView ? (
           <div className="flex w-full gap-2 flex-wrap">
-            <Button variant="outline" size="sm" className="flex-1 min-w-[80px]" onClick={() => console.log("View details for job:", job.id)} >
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 min-w-[80px]" 
+              onClick={() => handleAdminAction("View", job.id)} 
+            >
               <Eye className="mr-2 h-4 w-4" /> View
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 min-w-[80px]" onClick={() => console.log("Edit job:", job.id)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 min-w-[80px]" 
+              onClick={() => handleAdminAction("Edit", job.id)}
+            >
               <Edit3 className="mr-2 h-4 w-4" /> Edit
             </Button>
-            <Button variant="destructive" size="sm" className="flex-1 min-w-[90px]" onClick={() => console.log("Delete job:", job.id)}>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="flex-1 min-w-[90px]" 
+              onClick={() => handleAdminAction("Delete", job.id)}
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </Button>
           </div>
