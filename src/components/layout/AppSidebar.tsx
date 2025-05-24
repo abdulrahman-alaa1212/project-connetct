@@ -25,7 +25,7 @@ import {
   SidebarMenu, 
   SidebarMenuItem, 
   SidebarMenuButton,
-  useSidebar // Import useSidebar
+  useSidebar
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -39,7 +39,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, roles: ["hospital", "professional", "provider", "admin"] },
   { href: "/assessment", label: "My Assessment", icon: ClipboardList, roles: ["hospital"] },
-  { href: "/solutions", label: "Suggested Solutions", icon: LayoutGrid, roles: ["hospital"] },
+  { href: "/solutions", label: "Submit Assessment Request", icon: LayoutGrid, roles: ["hospital"] },
   { href: "/jobs", label: "Job Board", icon: Briefcase, roles: ["professional", "admin"] },
   { href: "/my-cv", label: "My CV / Applications", icon: UserCircle, roles: ["professional"] },
   { href: "/admin/reports", label: "Generate Reports", icon: FileText, roles: ["admin"] },
@@ -51,12 +51,11 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { user, isLoading: authIsLoading } = useAuth();
-  const { state, isMobile } = useSidebar(); // Get sidebar state (expanded/collapsed)
+  const { state, isMobile } = useSidebar(); 
 
-  const isLoading = authIsLoading || typeof state === 'undefined'; // Ensure sidebar state is also loaded
+  const isLoading = authIsLoading || typeof state === 'undefined'; 
 
   if (isLoading) {
-    // Skeleton for sidebar content
     return (
       <>
         <SidebarHeader className="p-4">
@@ -100,7 +99,7 @@ export function AppSidebar() {
                     asChild
                     isActive={isActive}
                     tooltip={{ children: item.label, side: "right" }}
-                    className="justify-start" // Default for expanded
+                    className="justify-start" 
                   >
                     <Link href={item.href}>
                       <item.icon />
