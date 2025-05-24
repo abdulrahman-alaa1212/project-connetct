@@ -46,3 +46,9 @@ export const CvUploadSchema = z.object({
     ),
   coverLetter: z.string().optional(),
 });
+
+export const ProfileUpdateSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Invalid email address." }),
+  avatar: z.string().url({ message: "Please enter a valid URL for your avatar, or leave empty for default." }).optional().or(z.literal("")),
+});
