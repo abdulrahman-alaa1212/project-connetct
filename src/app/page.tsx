@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/Logo";
 import Link from "next/link";
@@ -9,7 +10,7 @@ export default function LandingPage() {
       <header className="p-4 border-b">
         <Logo />
       </header>
-      <main className="flex-grow flex items-center justify-center p-8 bg-gradient-to-br from-background to-muted">
+      <main className="flex-grow flex items-center justify-center p-6 sm:p-8 bg-gradient-to-br from-background to-muted">
         <div className="text-center max-w-2xl">
           <Image 
             src="https://placehold.co/600x300.png"
@@ -17,19 +18,19 @@ export default function LandingPage() {
             data-ai-hint="abstract network"
             width={600}
             height={300}
-            className="mx-auto mb-8 rounded-lg shadow-xl"
+            className="mx-auto mb-6 sm:mb-8 rounded-lg shadow-xl w-full max-w-md sm:max-w-lg"
           />
-          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary mb-4 sm:mb-6">
             Welcome to Yura Connect
           </h1>
-          <p className="text-lg text-foreground mb-8">
+          <p className="text-base sm:text-lg text-foreground mb-6 sm:mb-8">
             Bridging the gap between healthcare innovation and skilled professionals. Discover tailored VR/MR/AR solutions and career opportunities.
           </p>
-          <div className="space-x-4">
-            <Button asChild size="lg">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button asChild size="lg" className="w-full sm:w-auto">
               <Link href="/login">Login</Link>
             </Button>
-            <Button asChild variant="secondary" size="lg">
+            <Button asChild variant="secondary" size="lg" className="w-full sm:w-auto">
               <Link href="/signup">Sign Up</Link>
             </Button>
           </div>

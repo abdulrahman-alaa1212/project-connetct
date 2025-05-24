@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,7 +7,7 @@ import { CvUploadDialog } from "@/components/jobs/CvUploadDialog";
 import type { JobPosting } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Loader2 } from "lucide-react";
+import { Search, Filter, Loader2, MapPin, Briefcase } from "lucide-react"; // Added MapPin and Briefcase
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Added CardDescription
 
 const mockJobs: JobPosting[] = [
   {
@@ -70,7 +71,6 @@ export default function JobBoardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API call
     setIsLoading(true);
     setTimeout(() => {
       let jobs = mockJobs;
@@ -106,15 +106,15 @@ export default function JobBoardPage() {
     <div className="space-y-6">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-primary">Job & Training Opportunities</CardTitle>
-          <p className="text-muted-foreground">Find your next role in the exciting field of XR in healthcare.</p>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Job & Training Opportunities</CardTitle>
+          <CardDescription className="text-muted-foreground">Find your next role in the exciting field of XR in healthcare.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div className="relative md:col-span-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input 
-                placeholder="Search by title, company, keyword..." 
+                placeholder="Search by title, company..." 
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -149,7 +149,7 @@ export default function JobBoardPage() {
           <p className="ml-4 text-lg text-foreground">Loading jobs...</p>
         </div>
       ) : filteredJobs.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredJobs.map((job) => (
             <JobCard key={job.id} job={job} onApply={handleApplyClick} />
           ))}

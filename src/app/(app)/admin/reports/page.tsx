@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -78,7 +79,6 @@ export default function AdminReportsPage() {
     
     try {
       const summary = await summarizeAssessment({ assessmentData: assessmentDataString });
-      // For MVP, report is the summary. In future, this could be a more structured document.
       setReportContent(summary.summary); 
       toast({ title: "Report Generated", description: `Report for ${assessment.hospitalName} is ready.` });
     } catch (error) {
@@ -113,7 +113,7 @@ export default function AdminReportsPage() {
     <div className="space-y-6">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-primary">Hospital Assessment Reports</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Hospital Assessment Reports</CardTitle>
           <CardDescription>View submitted assessments and generate summary reports.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -124,9 +124,9 @@ export default function AdminReportsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Hospital Name</TableHead>
-                  <TableHead>Submission Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Budget</TableHead>
+                  <TableHead className="hidden sm:table-cell">Submission Date</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Budget</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -134,9 +134,9 @@ export default function AdminReportsPage() {
                 {assessments.map((assessment) => (
                   <TableRow key={assessment.id}>
                     <TableCell className="font-medium">{assessment.hospitalName}</TableCell>
-                    <TableCell>{new Date(assessment.submissionDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{assessment.status}</TableCell>
-                    <TableCell>{assessment.budget}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{new Date(assessment.submissionDate).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden md:table-cell">{assessment.status}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{assessment.budget}</TableCell>
                     <TableCell className="text-right">
                       <Button 
                         variant="outline" 
@@ -148,7 +148,12 @@ export default function AdminReportsPage() {
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
                           <Eye className="mr-2 h-4 w-4" />
                         }
-                        { (isGeneratingReport && selectedAssessment?.id === assessment.id) ? "Generating..." : "View/Generate Report"}
+                        <span className="hidden sm:inline">
+                          {(isGeneratingReport && selectedAssessment?.id === assessment.id) ? "Generating..." : "View/Generate Report"}
+                        </span>
+                         <span className="sm:hidden">
+                          {(isGeneratingReport && selectedAssessment?.id === assessment.id) ? "..." : "View"}
+                        </span>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -191,3 +196,4 @@ export default function AdminReportsPage() {
     </div>
   );
 }
+

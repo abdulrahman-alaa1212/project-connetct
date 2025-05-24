@@ -11,7 +11,6 @@ import {
   Users,
   Settings,
   UserCircle,
-  ShieldCheck,
   LayoutGrid,
 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
@@ -19,7 +18,16 @@ import { UserNav } from "@/components/layout/UserNav";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { 
+  SidebarHeader, 
+  SidebarContent, 
+  SidebarFooter, 
+  SidebarMenu, 
+  SidebarMenuItem, 
+  SidebarMenuButton,
+  useSidebar // Import useSidebar
+} from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface NavItem {
   href: string;
@@ -31,75 +39,84 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, roles: ["hospital", "professional", "provider", "admin"] },
   { href: "/assessment", label: "My Assessment", icon: ClipboardList, roles: ["hospital"] },
-  { href: "/solutions", label: "Suggested Solutions", icon: LayoutGrid, roles: ["hospital"] }, // Placeholder
+  { href: "/solutions", label: "Suggested Solutions", icon: LayoutGrid, roles: ["hospital"] },
   { href: "/jobs", label: "Job Board", icon: Briefcase, roles: ["professional", "admin"] },
-  { href: "/my-cv", label: "My CV / Applications", icon: UserCircle, roles: ["professional"] }, // Placeholder
+  { href: "/my-cv", label: "My CV / Applications", icon: UserCircle, roles: ["professional"] },
   { href: "/admin/reports", label: "Generate Reports", icon: FileText, roles: ["admin"] },
-  { href: "/admin/users", label: "Manage Users", icon: Users, roles: ["admin"] }, // Placeholder
-  { href: "/services", label: "My Services", icon: LayoutGrid, roles: ["provider"] }, // Placeholder
+  { href: "/admin/users", label: "Manage Users", icon: Users, roles: ["admin"] },
+  { href: "/services", label: "My Services", icon: LayoutGrid, roles: ["provider"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["hospital", "professional", "provider", "admin"] },
 ];
 
-
 export function AppSidebar() {
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authIsLoading } = useAuth();
+  const { state, isMobile } = useSidebar(); // Get sidebar state (expanded/collapsed)
+
+  const isLoading = authIsLoading || typeof state === 'undefined'; // Ensure sidebar state is also loaded
 
   if (isLoading) {
-    // You might want a skeleton loader here
+    // Skeleton for sidebar content
     return (
-      <aside className="w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col p-4 border-r border-sidebar-border">
-        <div className="mb-8">
-          <Logo iconOnly={false} className="text-sidebar-primary-foreground" />
-        </div>
-        <div className="flex-grow space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-10 bg-sidebar-accent/30 rounded animate-pulse" />
-          ))}
-        </div>
-      </aside>
+      <>
+        <SidebarHeader className="p-4">
+          <Skeleton className="h-8 w-32" />
+        </SidebarHeader>
+        <SidebarContent className="p-2">
+          <div className="space-y-1">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </SidebarContent>
+        <SidebarFooter className="p-2">
+          <Skeleton className="h-12 w-full" />
+        </SidebarFooter>
+      </>
     );
   }
 
-  if (!user) return null; // Or redirect, though layout should handle this
+  if (!user) return null;
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
+  const isCollapsed = state === 'collapsed' && !isMobile;
 
   return (
-    <aside className="w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col p-1 border-r border-sidebar-border shadow-lg">
-      <div className="p-3 mb-4">
-        <Link href="/dashboard">
-          <Logo iconOnly={false} />
+    <>
+      <SidebarHeader className="border-b border-sidebar-border">
+        <Link href="/dashboard" className="flex h-14 items-center px-4">
+          <Logo iconOnly={isCollapsed} />
         </Link>
-      </div>
+      </SidebarHeader>
       
-      <ScrollArea className="flex-grow px-2">
-        <nav className="space-y-1">
-          {userNavItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </ScrollArea>
+      <SidebarContent className="p-0">
+        <ScrollArea className="h-full py-2 group-data-[collapsible=icon]:py-2">
+          <SidebarMenu className="px-2 group-data-[collapsible=icon]:px-1">
+            {userNavItems.map((item) => {
+              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              return (
+                <SidebarMenuItem key={item.label}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={{ children: item.label, side: "right" }}
+                    className="justify-start" // Default for expanded
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </ScrollArea>
+      </SidebarContent>
 
-      <div className="mt-auto p-2 border-t border-sidebar-border">
-        <UserNav />
-      </div>
-    </aside>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <UserNav compact={isCollapsed} />
+      </SidebarFooter>
+    </>
   );
 }

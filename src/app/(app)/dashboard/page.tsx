@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -52,8 +53,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <Card className="shadow-lg">
         <CardHeader className="pb-2">
-          <CardTitle className="text-3xl font-bold text-primary">Welcome back, {user.name}!</CardTitle>
-          <CardDescription className="text-lg">{getRoleSpecificGreeting()}</CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Welcome back, {user.name}!</CardTitle>
+          <CardDescription className="text-md sm:text-lg">{getRoleSpecificGreeting()}</CardDescription>
         </CardHeader>
         <CardContent>
             <Image 
@@ -69,16 +70,16 @@ export default function DashboardPage() {
 
       {quickActions.length > 0 && (
         <div>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">Quick Actions</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-foreground">Quick Actions</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {quickActions.map((action) => (
               <Card key={action.href} className="hover:shadow-xl transition-shadow">
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-2">
-                    <action.icon className="h-8 w-8 text-primary" />
-                    <CardTitle className="text-xl">{action.label}</CardTitle>
+                    <action.icon className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+                    <CardTitle className="text-lg sm:text-xl">{action.label}</CardTitle>
                   </div>
-                   <CardDescription>{action.description}</CardDescription>
+                   <CardDescription className="text-sm sm:text-base">{action.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
@@ -95,11 +96,11 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Platform Activity Overview</CardTitle>
-          <CardDescription>Summary of recent activities and insights. (Content TBD)</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Platform Activity Overview</CardTitle>
+          <CardDescription className="text-sm sm:text-base">Summary of recent activities and insights. (Content TBD)</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Detailed charts and summaries will be displayed here based on user role.</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Detailed charts and summaries will be displayed here based on user role.</p>
            <Image 
               src="https://placehold.co/800x200.png"
               alt="Activity chart placeholder"
