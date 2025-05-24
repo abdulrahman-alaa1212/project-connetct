@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -62,7 +63,7 @@ export function AppSidebar() {
 
   if (!user) return null; // Or redirect, though layout should handle this
 
-  const_user_nav_items = navItems.filter(item => item.roles.includes(user.role));
+  const userNavItems = navItems.filter(item => item.roles.includes(user.role));
 
   return (
     <aside className="w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col p-1 border-r border-sidebar-border shadow-lg">
@@ -74,7 +75,7 @@ export function AppSidebar() {
       
       <ScrollArea className="flex-grow px-2">
         <nav className="space-y-1">
-          {_user_nav_items.map((item) => {
+          {userNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
               <Link
