@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { UploadCloud, FileText, Download, Edit3, CheckCircle, XCircle } from "lucide-react";
+import { UploadCloud, FileText, Download, Edit3, CheckCircle, XCircle, UserCircle, Loader2 } from "lucide-react"; // Added UserCircle and Loader2
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
