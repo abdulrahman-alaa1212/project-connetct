@@ -3,18 +3,18 @@ import type { JobPosting } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, MapPin, CalendarDays, ArrowRight, Edit3, Trash2, Eye } from "lucide-react"; // Added more icons
+import { Briefcase, MapPin, CalendarDays, ArrowRight, Edit3, Trash2, Eye } from "lucide-react";
 import Image from "next/image";
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
 
 interface JobCardProps {
   job: JobPosting;
   onApply: (jobId: string) => void;
-  isAdminView?: boolean; // New prop
+  isAdminView?: boolean;
 }
 
 export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
   const timeSincePosted = (dateString: string) => {
     const date = new Date(dateString);
@@ -31,12 +31,22 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
   };
 
   const handleAdminAction = (action: "View" | "Edit" | "Delete", jobId: string) => {
-    const message = `${action} action triggered for job ID: ${jobId}`;
-    console.log(message);
+    console.log(`--- Admin Action Attempt --- Action: ${action}, Job ID: ${jobId}`);
+    if (!jobId) {
+      console.error("Admin Action: Job ID is undefined!");
+      alert("Error: Job ID is missing for this action.");
+      return;
+    }
+    const message = `${action} action triggered for job ID: ${jobId}. (Functionality not fully implemented)`;
+    alert(message); // Using alert for very direct feedback
+    
+    // You can re-enable toast later if alert works:
+    /*
     toast({
       title: `Admin Action: ${action}`,
       description: `Job ID: ${jobId} (Functionality not fully implemented)`,
     });
+    */
   };
 
   return (
