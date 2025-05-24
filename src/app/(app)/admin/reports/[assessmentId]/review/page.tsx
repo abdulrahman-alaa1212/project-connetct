@@ -5,11 +5,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { Assessment } from "@/types";
 import { mockAssessments as allMockAssessments } from "@/app/(app)/admin/reports/page"; // Import shared mock data
-import { Loader2, ArrowLeft, Save, Download, FileText, Brain, Lightbulb } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Download, FileText, Brain, Lightbulb, Upload, Send, FilePdf } from "lucide-react";
 
 export default function ReviewAssessmentPage() {
   const router = useRouter();
@@ -22,6 +23,11 @@ export default function ReviewAssessmentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // New states for PDF
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  const [isSendingPdf, setIsSendingPdf] = useState(false);
+  const [sentPdfName, setSentPdfName] = useState<string | null>(null);
+
   const loadAssessmentData = useCallback(() => {
     setIsLoading(true);
     const foundAssessment = allMockAssessments.find(asm => asm.id === assessmentId);
@@ -29,6 +35,7 @@ export default function ReviewAssessmentPage() {
       if (typeof window !== 'undefined') {
         const storedNotes = localStorage.getItem(`assessment_notes_${foundAssessment.id}`);
         const storedStatus = localStorage.getItem(`assessment_status_${foundAssessment.id}`) as Assessment["status"] | null;
+        const storedPdfName = localStorage.getItem(`assessment_pdf_response_${foundAssessment.id}`);
         
         const currentAssessment = {
           ...foundAssessment,
@@ -37,6 +44,9 @@ export default function ReviewAssessmentPage() {
         };
         setAssessment(currentAssessment);
         setAdminResponse(currentAssessment.adminNotes || "");
+        if (storedPdfName) {
+          setSentPdfName(storedPdfName);
+        }
       } else {
         setAssessment(foundAssessment);
         setAdminResponse(foundAssessment.adminNotes || "");
@@ -56,7 +66,6 @@ export default function ReviewAssessmentPage() {
     setIsSaving(true);
 
     try {
-      // Simulate saving to backend / update localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem(`assessment_notes_${assessment.id}`, adminResponse);
         localStorage.setItem(`assessment_status_${assessment.id}`, "Reviewed");
@@ -94,10 +103,12 @@ export default function ReviewAssessmentPage() {
       reportContent += `Solutions: ${assessment.aiSolutions.suggestedSolutions}\n`;
       reportContent += `Reasoning: ${assessment.aiSolutions.reasoning}\n\n`;
     }
-    // Use the current value from the textarea for the report if it exists
     const currentAdminResponse = adminResponse || assessment.adminNotes;
     if (currentAdminResponse) {
       reportContent += `--- Admin Notes / Official Response ---\n${currentAdminResponse}\n\n`;
+    }
+    if (sentPdfName) {
+      reportContent += `--- PDF Response Sent ---\nFilename: ${sentPdfName}\n(Content of PDF not included in this text report)\n\n`;
     }
     
     const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
@@ -109,6 +120,49 @@ export default function ReviewAssessmentPage() {
     document.body.removeChild(link);
     toast({ title: "Report Downloaded", description: `Report for ${assessment.hospitalName} downloaded as .txt file.` });
   };
+
+  const handlePdfFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setSelectedPdfFile(file);
+      toast({ title: "PDF Selected", description: file.name });
+    } else {
+      setSelectedPdfFile(null);
+      if (file) {
+        toast({ variant: "destructive", title: "Invalid File Type", description: "Please select a PDF file." });
+      }
+    }
+    event.target.value = ''; // Allow re-selecting the same file
+  };
+
+  const handleSendPdfResponse = async () => {
+    if (!assessment || !selectedPdfFile) {
+      toast({ variant: "destructive", title: "Error", description: "No PDF file selected or assessment missing." });
+      return;
+    }
+    setIsSendingPdf(true);
+    console.log("Simulating sending PDF:", selectedPdfFile.name, "for assessment:", assessment.id);
+    try {
+      // In a real app, upload to storage and then notify user/update backend.
+      // For mock: store filename in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`assessment_pdf_response_${assessment.id}`, selectedPdfFile.name);
+        localStorage.setItem(`assessment_status_${assessment.id}`, "Completed"); // Update status
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+      
+      setSentPdfName(selectedPdfFile.name);
+      setAssessment(prev => prev ? { ...prev, status: "Completed" } : null);
+      toast({ title: "PDF Sent (Simulated)", description: `"${selectedPdfFile.name}" has been sent as a response for ${assessment.hospitalName}.` });
+      setSelectedPdfFile(null); // Clear selection after sending
+
+    } catch (error) {
+      toast({ variant: "destructive", title: "PDF Send Failed", description: "Could not send the PDF response." });
+    } finally {
+      setIsSendingPdf(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -210,9 +264,54 @@ export default function ReviewAssessmentPage() {
           </Button>
         </CardFooter>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">PDF Response</CardTitle>
+          <CardDescription>Upload and send an official PDF response to the hospital.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="pdf-upload-button" className="cursor-pointer w-full sm:w-auto">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <span><Upload className="mr-2 h-4 w-4" /> Choose PDF File</span>
+              </Button>
+            </label>
+            <Input
+              id="pdf-upload-button" // Changed id to match label's htmlFor
+              type="file"
+              accept="application/pdf"
+              onChange={handlePdfFileChange}
+              className="hidden" // Keep it hidden, Button acts as the trigger
+            />
+            {selectedPdfFile && (
+              <div className="flex items-center text-sm text-muted-foreground p-2 border rounded-md">
+                <FilePdf className="mr-2 h-4 w-4 text-primary shrink-0" />
+                <span className="truncate">Selected: {selectedPdfFile.name}</span>
+              </div>
+            )}
+            {!selectedPdfFile && sentPdfName && (
+               <div className="flex items-center text-sm text-green-700 bg-green-50 p-2 border border-green-200 rounded-md">
+                <FilePdf className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">Previously sent: {sentPdfName} (You can send a new one to replace it)</span>
+              </div>
+            )}
+          </div>
+          <Button onClick={handleSendPdfResponse} disabled={!selectedPdfFile || isSendingPdf} className="w-full sm:w-auto">
+            {isSendingPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            {isSendingPdf ? "Sending..." : "Upload & Send PDF"}
+          </Button>
+        </CardContent>
+      </Card>
        <p className="text-xs text-muted-foreground text-center mt-2">
-        Note: PDF report generation is planned for a future update. Currently, reports are downloaded as .txt files.
+        Note: PDF reports are "sent" (simulated) and their filenames are tracked. Text reports include a note about PDF responses.
       </p>
     </div>
   );
 }
+
+    
