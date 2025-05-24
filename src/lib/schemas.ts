@@ -369,4 +369,14 @@ export const ProfileUpdateSchema = z.object({
   avatar: z.string().url({ message: "Please enter a valid URL for your avatar, or leave empty for default." }).optional().or(z.literal("")),
 });
 
+export const CreateJobPostingSchema = z.object({
+  title: z.string().min(3, { message: "Title must be at least 3 characters." }),
+  company: z.string().min(2, { message: "Company name must be at least 2 characters." }),
+  location: z.string().min(2, { message: "Location is required." }),
+  description: z.string().min(10, { message: "Description must be at least 10 characters." }),
+  type: z.enum(["Full-time", "Part-time", "Contract", "Internship", "Training"], {
+    required_error: "You need to select an opportunity type.",
+  }),
+  companyLogo: z.string().url({ message: "Please enter a valid URL for the company logo." }).optional().or(z.literal("")),
+});
     
