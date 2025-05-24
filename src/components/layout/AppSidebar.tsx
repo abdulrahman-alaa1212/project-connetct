@@ -12,7 +12,8 @@ import {
   Settings,
   UserCircle,
   LayoutGrid,
-  ListChecks, // Added for "View My Assessments"
+  ListChecks, 
+  Building, // For Provider services - can be refined
 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { UserNav } from "@/components/layout/UserNav";
@@ -37,16 +38,26 @@ interface NavItem {
   roles: UserRole[];
 }
 
+// Updated NavItems for clarity and admin focus
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, roles: ["hospital", "professional", "provider", "admin"] },
-  { href: "/assessment", label: "Submit New Assessment", icon: ClipboardList, roles: ["hospital"] }, // Relabeled
-  { href: "/my-assessments", label: "View My Assessments", icon: ListChecks, roles: ["hospital"] }, // New link
-  // { href: "/solutions", label: "Submit Assessment Request", icon: LayoutGrid, roles: ["hospital"] }, // Removed for now
-  { href: "/jobs", label: "Job Board", icon: Briefcase, roles: ["professional", "admin"] },
+  
+  // Hospital Roles
+  { href: "/assessment", label: "Submit New Assessment", icon: ClipboardList, roles: ["hospital"] },
+  { href: "/my-assessments", label: "View My Assessments", icon: ListChecks, roles: ["hospital"] },
+  
+  // Professional Roles
+  { href: "/jobs", label: "Job Board", icon: Briefcase, roles: ["professional", "admin"] }, // Admin also uses this to view and post
   { href: "/my-cv", label: "My CV / Applications", icon: UserCircle, roles: ["professional"] },
-  { href: "/admin/reports", label: "Generate Reports", icon: FileText, roles: ["admin"] },
+  
+  // Provider Roles
+  { href: "/services", label: "My Services", icon: Building, roles: ["provider"] }, // Placeholder icon
+
+  // Admin Roles - Explicitly listed
+  { href: "/admin/reports", label: "Manage Assessments", icon: FileText, roles: ["admin"] },
   { href: "/admin/users", label: "Manage Users", icon: Users, roles: ["admin"] },
-  { href: "/services", label: "My Services", icon: LayoutGrid, roles: ["provider"] },
+  
+  // Common
   { href: "/settings", label: "Settings", icon: Settings, roles: ["hospital", "professional", "provider", "admin"] },
 ];
 
