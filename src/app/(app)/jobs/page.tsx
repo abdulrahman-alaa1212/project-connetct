@@ -4,10 +4,11 @@
 import { useState, useEffect } from "react";
 import { JobCard } from "@/components/jobs/JobCard";
 import { CvUploadDialog } from "@/components/jobs/CvUploadDialog";
+import { CreateJobPostingDialog } from "@/components/jobs/CreateJobPostingDialog"; // Import new dialog
 import type { JobPosting } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Loader2, MapPin, Briefcase } from "lucide-react";
+import { Search, Filter, Loader2, MapPin, Briefcase, PlusCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth"; // Import useAuth
+import { useAuth } from "@/hooks/useAuth"; 
 
 const mockJobs: JobPosting[] = [
   {
@@ -71,28 +72,26 @@ const mockJobs: JobPosting[] = [
 
 
 export default function JobBoardPage() {
-  const { user } = useAuth(); // Get current user
+  const { user } = useAuth(); 
+  const [jobs, setJobs] = useState<JobPosting[]>(mockJobs); // Use state for jobs to allow adding new ones
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [isCvUploadOpen, setIsCvUploadOpen] = useState(false);
+  const [isCreateJobOpen, setIsCreateJobOpen] = useState(false); // State for new dialog
   const [searchTerm, setSearchTerm] = useState("");
   const [jobTypeFilter, setJobTypeFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState("");
-  const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
     // Simulate fetching jobs
     setTimeout(() => {
-      let jobsToDisplay = mockJobs;
+      let jobsToDisplay = [...jobs]; // Operate on a copy of the state
 
       if (user?.role === 'admin') {
-        // Admins see only jobs they posted (or all jobs marked as admin-posted in this mock)
         jobsToDisplay = jobsToDisplay.filter(job => job.postedByAdmin);
       }
-      // Professionals (and other non-admin roles) see all jobs by default,
-      // or this logic could be refined to exclude certain admin-only jobs if needed.
-
+      
       if (searchTerm) {
         jobsToDisplay = jobsToDisplay.filter(job => 
           job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,35 +105,50 @@ export default function JobBoardPage() {
       if (locationFilter) {
         jobsToDisplay = jobsToDisplay.filter(job => job.location.toLowerCase().includes(locationFilter.toLowerCase()));
       }
-      setFilteredJobs(jobsToDisplay);
+      setFilteredJobs(jobsToDisplay); // This line was missing, now added.
       setIsLoading(false);
     }, 500);
-  }, [searchTerm, jobTypeFilter, locationFilter, user]); // Add user to dependencies
+  }, [searchTerm, jobTypeFilter, locationFilter, user, jobs]); 
+
+  // This state will hold the jobs that are actually rendered after filtering.
+  const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
+
 
   const handleApplyClick = (jobId: string) => {
-    // This should only be callable by non-admins
     if (user?.role === 'admin') return;
-
-    const job = mockJobs.find((j) => j.id === jobId);
+    const job = jobs.find((j) => j.id === jobId);
     if (job) {
       setSelectedJob(job);
       setIsCvUploadOpen(true);
     }
   };
 
-  const jobTypes = ["all", ...new Set(mockJobs.map(job => job.type))];
+  const handleJobCreated = (newJob: JobPosting) => {
+    setJobs(prevJobs => [newJob, ...prevJobs]); // Add new job to the state
+  };
 
-  const pageTitle = user?.role === 'admin' ? "Manage Job & Training Postings" : "Job & Training Opportunities";
+  const jobTypes = ["all", ...new Set(jobs.map(job => job.type))];
+
+  const pageTitle = user?.role === 'admin' ? "Post & Manage Opportunities" : "Job & Training Opportunities";
   const pageDescription = user?.role === 'admin' 
-    ? "View job and training offers published on the platform." 
+    ? "Create, view, and manage job and training offers published on the platform." 
     : "Find your next role in the exciting field of XR in healthcare.";
 
   return (
     <div className="space-y-6">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">{pageTitle}</CardTitle>
-          <CardDescription className="text-muted-foreground">{pageDescription}</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">{pageTitle}</CardTitle>
+              <CardDescription className="text-muted-foreground">{pageDescription}</CardDescription>
+            </div>
+            {user?.role === 'admin' && (
+              <Button onClick={() => setIsCreateJobOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Create New Posting
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -167,14 +181,13 @@ export default function JobBoardPage() {
               />
             </div>
           </div>
-          {/* Admin might have a "Create New Posting" button here in the future */}
         </CardContent>
       </Card>
 
       {isLoading ? (
         <div className="flex justify-center items-center py-10">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="ml-4 text-lg text-foreground">Loading jobs...</p>
+          <p className="ml-4 text-lg text-foreground">Loading opportunities...</p>
         </div>
       ) : filteredJobs.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
@@ -183,7 +196,7 @@ export default function JobBoardPage() {
               key={job.id} 
               job={job} 
               onApply={handleApplyClick}
-              isAdminView={user?.role === 'admin'} // Pass isAdminView prop
+              isAdminView={user?.role === 'admin'} 
             />
           ))}
         </div>
@@ -191,10 +204,10 @@ export default function JobBoardPage() {
         <Card>
           <CardContent className="py-10 text-center">
             <Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold text-foreground">No Jobs Found</h3>
+            <h3 className="text-xl font-semibold text-foreground">No Opportunities Found</h3>
             <p className="text-muted-foreground">
               {user?.role === 'admin' 
-                ? "You haven't posted any jobs yet, or no jobs match your current filters."
+                ? "You haven't posted any opportunities yet, or none match your current filters."
                 : "Try adjusting your search filters or check back later."
               }
             </p>
@@ -202,12 +215,18 @@ export default function JobBoardPage() {
         </Card>
       )}
 
-      {/* CV Upload Dialog should only be relevant for non-admins */}
       {user?.role !== 'admin' && (
         <CvUploadDialog
           job={selectedJob}
           isOpen={isCvUploadOpen}
           onOpenChange={setIsCvUploadOpen}
+        />
+      )}
+      {user?.role === 'admin' && (
+         <CreateJobPostingDialog
+          isOpen={isCreateJobOpen}
+          onOpenChange={setIsCreateJobOpen}
+          onJobCreated={handleJobCreated}
         />
       )}
     </div>

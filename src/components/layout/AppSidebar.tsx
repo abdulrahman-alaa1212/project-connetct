@@ -106,17 +106,21 @@ export function AppSidebar() {
           <SidebarMenu className="px-2 group-data-[collapsible=icon]:px-1">
             {userNavItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              let navLabel = item.label;
+              if (item.href === "/jobs" && user.role === "admin") {
+                navLabel = "Post & Manage Opportunities";
+              }
               return (
-                <SidebarMenuItem key={item.label}>
+                <SidebarMenuItem key={item.href + '-' + user.role}> {/* Ensure key is unique if label changes */}
                   <SidebarMenuButton
                     asChild
                     isActive={isActive}
-                    tooltip={{ children: item.label, side: "right" }}
+                    tooltip={{ children: navLabel, side: "right" }}
                     className="justify-start" 
                   >
                     <Link href={item.href}>
                       <item.icon />
-                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{navLabel}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
