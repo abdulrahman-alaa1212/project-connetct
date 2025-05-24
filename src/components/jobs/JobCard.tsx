@@ -38,7 +38,7 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
               width={50} 
               height={50} 
               className="rounded-md border"
-              data-ai-hint="company logo"
+              data-ai-hint={job.dataAiHint || "company logo"}
             />
           )}
           <div className="flex-1">
@@ -57,14 +57,14 @@ export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
       </CardContent>
       <CardFooter>
         {isAdminView ? (
-          <div className="flex w-full gap-2">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => console.log("View details for job:", job.id)} >
+          <div className="flex w-full gap-2 flex-wrap">
+            <Button variant="outline" size="sm" className="flex-1 min-w-[80px]" onClick={() => console.log("View details for job:", job.id)} >
               <Eye className="mr-2 h-4 w-4" /> View
             </Button>
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => console.log("Edit job:", job.id)}>
+            <Button variant="outline" size="sm" className="flex-1 min-w-[80px]" onClick={() => console.log("Edit job:", job.id)}>
               <Edit3 className="mr-2 h-4 w-4" /> Edit
             </Button>
-            <Button variant="destructive" size="sm" className="flex-1" onClick={() => console.log("Delete job:", job.id)}>
+            <Button variant="destructive" size="sm" className="flex-1 min-w-[90px]" onClick={() => console.log("Delete job:", job.id)}>
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </Button>
           </div>

@@ -28,6 +28,7 @@ const mockJobs: JobPosting[] = [
     datePosted: new Date(Date.now() - 86400000 * 2).toISOString(),
     type: "Full-time",
     companyLogo: "https://placehold.co/100x100.png?text=IVS",
+    dataAiHint: "technology company logo",
     postedByAdmin: true,
   },
   {
@@ -39,6 +40,7 @@ const mockJobs: JobPosting[] = [
     datePosted: new Date(Date.now() - 86400000 * 5).toISOString(),
     type: "Contract",
     companyLogo: "https://placehold.co/100x100.png?text=HXR",
+    dataAiHint: "medical tech logo",
     postedByAdmin: true,
   },
   {
@@ -50,6 +52,7 @@ const mockJobs: JobPosting[] = [
     datePosted: new Date(Date.now() - 86400000 * 1).toISOString(),
     type: "Full-time",
     companyLogo: "https://placehold.co/100x100.png?text=MSC",
+    dataAiHint: "simulation company logo",
     postedByAdmin: true,
   },
   {
@@ -61,6 +64,7 @@ const mockJobs: JobPosting[] = [
     datePosted: new Date(Date.now() - 86400000 * 10).toISOString(),
     type: "Part-time",
     companyLogo: "https://placehold.co/100x100.png?text=GMT",
+    dataAiHint: "training company logo",
     postedByAdmin: true,
   },
 ];
@@ -173,7 +177,7 @@ export default function JobBoardPage() {
           <p className="ml-4 text-lg text-foreground">Loading jobs...</p>
         </div>
       ) : filteredJobs.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
           {filteredJobs.map((job) => (
             <JobCard 
               key={job.id} 
