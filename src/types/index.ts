@@ -19,6 +19,7 @@ export interface JobPosting {
   datePosted: string; // ISO date string
   type: "Full-time" | "Part-time" | "Contract" | "Internship" | "Training";
   companyLogo?: string; // URL to company logo
+  postedByAdmin?: boolean; // Added to identify admin-posted jobs
 }
 
 export interface Assessment {

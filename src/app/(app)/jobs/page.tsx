@@ -7,7 +7,7 @@ import { CvUploadDialog } from "@/components/jobs/CvUploadDialog";
 import type { JobPosting } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Loader2, MapPin, Briefcase } from "lucide-react"; // Added MapPin and Briefcase
+import { Search, Filter, Loader2, MapPin, Briefcase } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Added CardDescription
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth"; // Import useAuth
 
 const mockJobs: JobPosting[] = [
   {
@@ -24,9 +25,10 @@ const mockJobs: JobPosting[] = [
     company: "Innovatech VR Solutions",
     location: "San Francisco, CA",
     description: "Join our team to build cutting-edge VR experiences for medical training. Strong Unity/C# skills required.",
-    datePosted: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+    datePosted: new Date(Date.now() - 86400000 * 2).toISOString(),
     type: "Full-time",
     companyLogo: "https://placehold.co/100x100.png?text=IVS",
+    postedByAdmin: true,
   },
   {
     id: "2",
@@ -34,9 +36,10 @@ const mockJobs: JobPosting[] = [
     company: "Healthcare XR Inc.",
     location: "Remote",
     description: "Create interactive AR/MR modules for patient education and surgical planning. Experience with HoloLens or Magic Leap preferred.",
-    datePosted: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
+    datePosted: new Date(Date.now() - 86400000 * 5).toISOString(),
     type: "Contract",
     companyLogo: "https://placehold.co/100x100.png?text=HXR",
+    postedByAdmin: true,
   },
   {
     id: "3",
@@ -44,9 +47,10 @@ const mockJobs: JobPosting[] = [
     company: "MedSimulators Co.",
     location: "Boston, MA",
     description: "Lead exciting XR projects in the healthcare domain. Manage timelines, budgets, and stakeholder communication.",
-    datePosted: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
+    datePosted: new Date(Date.now() - 86400000 * 1).toISOString(),
     type: "Full-time",
     companyLogo: "https://placehold.co/100x100.png?text=MSC",
+    postedByAdmin: true,
   },
   {
     id: "4",
@@ -54,45 +58,59 @@ const mockJobs: JobPosting[] = [
     company: "Global Medical Training",
     location: "New York, NY",
     description: "Develop and deliver VR-based training programs for healthcare professionals. Strong presentation skills needed.",
-    datePosted: new Date(Date.now() - 86400000 * 10).toISOString(), // 10 days ago
+    datePosted: new Date(Date.now() - 86400000 * 10).toISOString(),
     type: "Part-time",
     companyLogo: "https://placehold.co/100x100.png?text=GMT",
+    postedByAdmin: true,
   },
 ];
 
 
 export default function JobBoardPage() {
+  const { user } = useAuth(); // Get current user
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [isCvUploadOpen, setIsCvUploadOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [jobTypeFilter, setJobTypeFilter] = useState<string>("all");
-  const [locationFilter, setLocationFilter] = useState(""); // Simple text filter for location
+  const [locationFilter, setLocationFilter] = useState("");
   const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
+    // Simulate fetching jobs
     setTimeout(() => {
-      let jobs = mockJobs;
+      let jobsToDisplay = mockJobs;
+
+      if (user?.role === 'admin') {
+        // Admins see only jobs they posted (or all jobs marked as admin-posted in this mock)
+        jobsToDisplay = jobsToDisplay.filter(job => job.postedByAdmin);
+      }
+      // Professionals (and other non-admin roles) see all jobs by default,
+      // or this logic could be refined to exclude certain admin-only jobs if needed.
+
       if (searchTerm) {
-        jobs = jobs.filter(job => 
+        jobsToDisplay = jobsToDisplay.filter(job => 
           job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
           job.description.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
       if (jobTypeFilter !== "all") {
-        jobs = jobs.filter(job => job.type === jobTypeFilter);
+        jobsToDisplay = jobsToDisplay.filter(job => job.type === jobTypeFilter);
       }
       if (locationFilter) {
-        jobs = jobs.filter(job => job.location.toLowerCase().includes(locationFilter.toLowerCase()));
+        jobsToDisplay = jobsToDisplay.filter(job => job.location.toLowerCase().includes(locationFilter.toLowerCase()));
       }
-      setFilteredJobs(jobs);
+      setFilteredJobs(jobsToDisplay);
       setIsLoading(false);
     }, 500);
-  }, [searchTerm, jobTypeFilter, locationFilter]);
+  }, [searchTerm, jobTypeFilter, locationFilter, user]); // Add user to dependencies
 
   const handleApplyClick = (jobId: string) => {
+    // This should only be callable by non-admins
+    if (user?.role === 'admin') return;
+
     const job = mockJobs.find((j) => j.id === jobId);
     if (job) {
       setSelectedJob(job);
@@ -102,12 +120,17 @@ export default function JobBoardPage() {
 
   const jobTypes = ["all", ...new Set(mockJobs.map(job => job.type))];
 
+  const pageTitle = user?.role === 'admin' ? "Manage Job & Training Postings" : "Job & Training Opportunities";
+  const pageDescription = user?.role === 'admin' 
+    ? "View job and training offers published on the platform." 
+    : "Find your next role in the exciting field of XR in healthcare.";
+
   return (
     <div className="space-y-6">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Job & Training Opportunities</CardTitle>
-          <CardDescription className="text-muted-foreground">Find your next role in the exciting field of XR in healthcare.</CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">{pageTitle}</CardTitle>
+          <CardDescription className="text-muted-foreground">{pageDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -140,6 +163,7 @@ export default function JobBoardPage() {
               />
             </div>
           </div>
+          {/* Admin might have a "Create New Posting" button here in the future */}
         </CardContent>
       </Card>
 
@@ -151,7 +175,12 @@ export default function JobBoardPage() {
       ) : filteredJobs.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredJobs.map((job) => (
-            <JobCard key={job.id} job={job} onApply={handleApplyClick} />
+            <JobCard 
+              key={job.id} 
+              job={job} 
+              onApply={handleApplyClick}
+              isAdminView={user?.role === 'admin'} // Pass isAdminView prop
+            />
           ))}
         </div>
       ) : (
@@ -159,16 +188,24 @@ export default function JobBoardPage() {
           <CardContent className="py-10 text-center">
             <Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold text-foreground">No Jobs Found</h3>
-            <p className="text-muted-foreground">Try adjusting your search filters or check back later.</p>
+            <p className="text-muted-foreground">
+              {user?.role === 'admin' 
+                ? "You haven't posted any jobs yet, or no jobs match your current filters."
+                : "Try adjusting your search filters or check back later."
+              }
+            </p>
           </CardContent>
         </Card>
       )}
 
-      <CvUploadDialog
-        job={selectedJob}
-        isOpen={isCvUploadOpen}
-        onOpenChange={setIsCvUploadOpen}
-      />
+      {/* CV Upload Dialog should only be relevant for non-admins */}
+      {user?.role !== 'admin' && (
+        <CvUploadDialog
+          job={selectedJob}
+          isOpen={isCvUploadOpen}
+          onOpenChange={setIsCvUploadOpen}
+        />
+      )}
     </div>
   );
 }

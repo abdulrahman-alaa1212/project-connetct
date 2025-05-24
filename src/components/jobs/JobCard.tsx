@@ -1,16 +1,18 @@
+
 import type { JobPosting } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, MapPin, CalendarDays, ArrowRight } from "lucide-react";
+import { Briefcase, MapPin, CalendarDays, ArrowRight, Edit3, Trash2, Eye } from "lucide-react"; // Added more icons
 import Image from "next/image";
 
 interface JobCardProps {
   job: JobPosting;
   onApply: (jobId: string) => void;
+  isAdminView?: boolean; // New prop
 }
 
-export function JobCard({ job, onApply }: JobCardProps) {
+export function JobCard({ job, onApply, isAdminView }: JobCardProps) {
   const timeSincePosted = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -54,9 +56,23 @@ export function JobCard({ job, onApply }: JobCardProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={() => onApply(job.id)} className="w-full">
-          Apply Now <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
+        {isAdminView ? (
+          <div className="flex w-full gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => console.log("View details for job:", job.id)} >
+              <Eye className="mr-2 h-4 w-4" /> View
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => console.log("Edit job:", job.id)}>
+              <Edit3 className="mr-2 h-4 w-4" /> Edit
+            </Button>
+            <Button variant="destructive" size="sm" className="flex-1" onClick={() => console.log("Delete job:", job.id)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={() => onApply(job.id)} className="w-full">
+            Apply Now <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
