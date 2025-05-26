@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,10 +26,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import type { JobPosting } from "@/types";
+import type { JobPosting, AppliedJob } from "@/types";
 import { useState } from "react";
 import { Loader2, UploadCloud } from "lucide-react";
-import { recommendJobs } from "@/ai/flows/recommend-jobs"; // Assuming recommendJobs can also be used post-application for other suggestions
+import { useAuth } from "@/hooks/useAuth";
+
 
 interface CvUploadDialogProps {
   job: JobPosting | null;
@@ -37,6 +39,7 @@ interface CvUploadDialogProps {
 }
 
 export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -52,8 +55,31 @@ export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProp
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      setFileName(files[0].name);
-      form.setValue("cvFile", files); // react-hook-form expects FileList
+      const file = files[0];
+       if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "CV file size should not exceed 5MB.",
+        });
+        event.target.value = ''; // Clear the input
+        setFileName(null);
+        form.setValue("cvFile", undefined);
+        return;
+      }
+      if (!["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"].includes(file.type)) {
+        toast({
+          variant: "destructive",
+          title: "Invalid File Type",
+          description: "Please upload a PDF, DOC, or DOCX file.",
+        });
+        event.target.value = ''; // Clear the input
+        setFileName(null);
+        form.setValue("cvFile", undefined);
+        return;
+      }
+      setFileName(file.name);
+      form.setValue("cvFile", files); 
     } else {
       setFileName(null);
       form.setValue("cvFile", undefined);
@@ -61,39 +87,40 @@ export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProp
   };
 
   async function onSubmit(values: z.infer<typeof CvUploadSchema>) {
-    if (!job) return;
+    if (!job || !user) {
+      toast({ variant: "destructive", title: "Error", description: "Job or user information missing." });
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      // Simulate file upload and get a data URI
-      // In a real app, you'd upload to a storage service (e.g., Firebase Storage)
-      // and then use the URL or data URI for the AI call.
       const file = values.cvFile[0];
-      const reader = new FileReader();
-      
-      reader.onloadend = async () => {
-        const cvDataUri = reader.result as string;
-        console.log("CV Data URI (first 100 chars):", cvDataUri.substring(0,100));
+      // Simulate file "upload" - in a real app, this would go to backend storage.
+      // For now, we'll just use the filename for the application record.
+      console.log("Simulating CV upload:", file.name);
+      console.log("Cover letter:", values.coverLetter);
 
-        // Mock calling recommendJobs or a similar flow for processing application
-        // For example, the AI could parse the CV and check its suitability for the current job
-        // or suggest other jobs if this one is not a perfect fit.
-        // For this example, we'll just log it. In a real app, the actual jobPostings would be passed.
-        try {
-          // const recommendations = await recommendJobs({ cvDataUri, jobPostings: [job.title] });
-          // console.log("AI Recommendation based on CV:", recommendations);
-          // toast({ title: "AI Analysis", description: `Recommended for: ${recommendations.recommendedJobs.join(', ')}` });
-           toast({ title: "Application Submitted (Simulated)", description: `Your CV for ${job.title} has been received.` });
-        } catch (aiError) {
-           console.error("AI processing error:", aiError);
-           toast({ variant: "destructive", title: "AI Processing Error", description: "Could not analyze CV with AI." });
-        }
-        
-        form.reset();
-        setFileName(null);
-        onOpenChange(false);
+      const newApplication: AppliedJob = {
+        id: Date.now().toString(), // Simple unique ID
+        jobId: job.id,
+        jobTitle: job.title,
+        company: job.company,
+        dateApplied: new Date().toISOString(),
+        status: "Submitted",
       };
-      reader.readAsDataURL(file);
+
+      // Save to localStorage
+      const storageKey = `user_applications_${user.id}`;
+      const storedApplications = localStorage.getItem(storageKey);
+      let applications: AppliedJob[] = storedApplications ? JSON.parse(storedApplications) : [];
+      applications.unshift(newApplication); // Add to the beginning of the list
+      localStorage.setItem(storageKey, JSON.stringify(applications));
+      
+      toast({ title: "Application Submitted!", description: `Your application for ${job.title} has been submitted.` });
+      
+      form.reset();
+      setFileName(null);
+      onOpenChange(false);
 
     } catch (error) {
       toast({
@@ -102,19 +129,20 @@ export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProp
         description: (error as Error).message || "Could not submit your application.",
       });
     } finally {
-      //setIsSubmitting(false); // Moved inside onloadend for async operations
+      setIsSubmitting(false);
     }
-    // This part needs to be inside onloadend to ensure setIsSubmitting is called after async ops
-    // For now, we'll keep it simple and assume immediate processing for UI feedback.
-    // A more robust solution would use promises or async/await with reader.onloadend.
-    // Temporary fix:
-    setTimeout(() => setIsSubmitting(false), 1500); // Simulate processing time
   }
 
   if (!job) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) { // Reset form if dialog is closed
+        form.reset();
+        setFileName(null);
+      }
+      onOpenChange(open);
+    }}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle className="text-primary">Apply for: {job.title}</DialogTitle>
@@ -127,21 +155,21 @@ export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProp
             <FormField
               control={form.control}
               name="cvFile"
-              render={({ field }) => ( // field doesn't contain value for file input directly using ShadCN default
+              render={({ field }) => ( 
                 <FormItem>
                   <FormLabel>Upload CV (.pdf, .doc, .docx - max 5MB)</FormLabel>
                   <FormControl>
                     <div className="relative">
                        <Input 
                         type="file" 
-                        id="cvFile"
-                        accept=".pdf,.doc,.docx"
+                        id={`cvFile-${job.id}`} // Ensure unique ID if multiple dialogs could exist (though unlikely here)
+                        accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         onChange={handleFileChange}
-                        className="hidden" // Hide default input
+                        className="hidden" 
                       />
                       <label 
-                        htmlFor="cvFile" 
-                        className="flex items-center justify-center w-full h-32 px-4 transition bg-background border-2 border-dashed rounded-md appearance-none cursor-pointer hover:border-primary focus:outline-none"
+                        htmlFor={`cvFile-${job.id}`} 
+                        className="flex items-center justify-center w-full h-32 px-4 transition bg-background border-2 border-input border-dashed rounded-md appearance-none cursor-pointer hover:border-primary focus:outline-none"
                       >
                         {fileName ? (
                           <span className="text-sm text-foreground">{fileName}</span>
@@ -179,11 +207,11 @@ export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProp
             />
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" onClick={() => { form.reset(); setFileName(null); }}>
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !fileName}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit Application
               </Button>
@@ -194,3 +222,5 @@ export function CvUploadDialog({ job, isOpen, onOpenChange }: CvUploadDialogProp
     </Dialog>
   );
 }
+
+    

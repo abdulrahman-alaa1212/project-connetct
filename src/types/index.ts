@@ -54,7 +54,7 @@ export interface UserSubmittedAssessment { // Hospital user's submitted assessme
   hospitalId: string;
   hospitalName: string; // Store for quick display
   submissionDate: string;
-  status: "Submitted" | "In Review" | "Responded" | "Completed"; // More granular for hospital view
+  status: "Submitted" | "Reviewed" | "Completed"; // Status from Admin's perspective now simplified
   primaryGoalsSummary?: string; // For quick display
   formData: FullAssessmentSchemaValues; // The full submission
   aiSummary?: string;
@@ -64,6 +64,15 @@ export interface UserSubmittedAssessment { // Hospital user's submitted assessme
   };
   adminResponseText?: string; // Text response from admin
   adminResponsePdfName?: string; // Filename of PDF response from admin
+}
+
+export interface AppliedJob {
+  id: string;
+  jobId: string; // To link back to the JobPosting
+  jobTitle: string;
+  company: string;
+  dateApplied: string; // ISO String
+  status: "Submitted" | "Viewed" | "Under Review" | "Shortlisted" | "Offered" | "Rejected" | "Withdrawn";
 }
 
 
@@ -105,3 +114,5 @@ export interface ProviderService {
   imageUrl?: string; // Optional image for the service
   dataAiHint?: string;
 }
+
+    

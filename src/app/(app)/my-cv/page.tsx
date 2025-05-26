@@ -6,31 +6,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { UploadCloud, FileText, Download, Edit3, CheckCircle, XCircle, UserCircle, Loader2 } from "lucide-react"; // Added UserCircle and Loader2
+import { UploadCloud, FileText, Download, Edit3, CheckCircle, XCircle, UserCircle, Loader2, Info } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+interface StoredCvData {
+  name: string;
+  type: string;
+  size: number; // in bytes
+  lastUpdated: string; // ISO string
+  // In a real app, might store a URL or a reference to actual file data for download
+  // For mock, we only store metadata.
+}
 
 export default function ManageCvPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const [cvFileName, setCvFileName] = useState<string | null>(null);
-  const [cvLastUpdated, setCvLastUpdated] = useState<string | null>(null);
+  const [selectedCvFile, setSelectedCvFile] = useState<File | null>(null);
+  const [storedCvInfo, setStoredCvInfo] = useState<StoredCvData | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const cvStorageKey = user ? `user_cv_data_${user.id}` : null;
+  const cvStorageKey = user ? `user_cv_metadata_${user.id}` : null;
 
   useEffect(() => {
     if (cvStorageKey) {
-      const storedCvData = localStorage.getItem(cvStorageKey);
-      if (storedCvData) {
+      const storedCvJson = localStorage.getItem(cvStorageKey);
+      if (storedCvJson) {
         try {
-          const data = JSON.parse(storedCvData);
-          setCvFileName(data.name);
-          setCvLastUpdated(data.lastUpdated);
+          setStoredCvInfo(JSON.parse(storedCvJson));
         } catch (e) {
-          console.error("Failed to parse CV data from localStorage", e);
+          console.error("Failed to parse stored CV data from localStorage", e);
           localStorage.removeItem(cvStorageKey); // Clear corrupted data
         }
       }
@@ -47,6 +52,7 @@ export default function ManageCvPage() {
           description: "CV file size should not exceed 5MB.",
         });
         event.target.value = ''; // Clear the input
+        setSelectedCvFile(null);
         return;
       }
       if (!["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"].includes(file.type)) {
@@ -56,15 +62,21 @@ export default function ManageCvPage() {
           description: "Please upload a PDF, DOC, or DOCX file.",
         });
         event.target.value = ''; // Clear the input
+        setSelectedCvFile(null);
         return;
       }
-      setCvFile(file);
-      setCvFileName(file.name); // Show selected file name immediately
+      setSelectedCvFile(file);
+    } else {
+      setSelectedCvFile(null);
+    }
+     // Clear file input to allow re-selection of the same file
+    if (event.target) {
+        event.target.value = '';
     }
   };
 
   const handleUploadCv = async () => {
-    if (!cvFile || !cvStorageKey) {
+    if (!selectedCvFile || !cvStorageKey) {
       toast({
         variant: "destructive",
         title: "No File Selected",
@@ -76,28 +88,43 @@ export default function ManageCvPage() {
     // Simulate upload
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const newLastUpdated = new Date().toLocaleString();
-    const cvDataToStore = {
-      name: cvFile.name,
-      lastUpdated: newLastUpdated,
-      // In a real app, you'd store a URL from a cloud storage service here, not the file itself.
-      // For mock: we are just storing metadata.
+    const newCvData: StoredCvData = {
+      name: selectedCvFile.name,
+      type: selectedCvFile.type,
+      size: selectedCvFile.size,
+      lastUpdated: new Date().toISOString(),
     };
-    localStorage.setItem(cvStorageKey, JSON.stringify(cvDataToStore));
-    setCvLastUpdated(newLastUpdated);
-    // setCvFileName(cvFile.name) is already set by handleFileChange
-
+    localStorage.setItem(cvStorageKey, JSON.stringify(newCvData));
+    setStoredCvInfo(newCvData);
+    
     setIsUploading(false);
     toast({
-      title: "CV Uploaded Successfully",
-      description: `${cvFile.name} has been set as your current CV.`,
+      title: "CV Updated Successfully",
+      description: `${selectedCvFile.name} has been set as your current CV.`,
     });
-    setCvFile(null); // Clear the selected file after upload
+    setSelectedCvFile(null); // Clear the selected file after upload
   };
   
+  const handleDownloadMockCv = () => {
+    if (!storedCvInfo) {
+      toast({ variant: "destructive", title: "No CV", description: "No CV has been uploaded to download."});
+      return;
+    }
+    // Simulate download of the stored CV
+    const mockContent = `This is a mock download for your CV: ${storedCvInfo.name}\nType: ${storedCvInfo.type}\nSize: ${(storedCvInfo.size / 1024).toFixed(2)} KB\nLast Updated: ${new Date(storedCvInfo.lastUpdated).toLocaleString()}`;
+    const blob = new Blob([mockContent], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Mock_CV_${storedCvInfo.name.split('.')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "Mock CV Downloaded", description: "A text file representing your CV has been downloaded." });
+  };
+
   if (user?.role !== 'professional') {
     return (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full p-4">
             <Alert variant="destructive" className="max-w-lg">
                 <XCircle className="h-5 w-5"/>
                 <AlertTitle>Access Denied</AlertTitle>
@@ -124,26 +151,32 @@ export default function ManageCvPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Current CV</CardTitle>
+          <CardTitle className="text-xl">Current CV Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {cvFileName ? (
+          {storedCvInfo ? (
             <>
-              <div className="flex items-center p-3 border rounded-md bg-muted">
-                <FileText className="h-6 w-6 mr-3 text-primary" />
-                <div>
-                  <p className="font-medium">{cvFileName}</p>
-                  <p className="text-xs text-muted-foreground">Last Updated: {cvLastUpdated}</p>
+              <div className="flex items-center p-3 border rounded-md bg-muted text-sm">
+                <FileText className="h-8 w-8 mr-4 text-primary flex-shrink-0" />
+                <div className="space-y-1">
+                  <p><span className="font-semibold">Filename:</span> {storedCvInfo.name}</p>
+                  <p><span className="font-semibold">Type:</span> {storedCvInfo.type}</p>
+                  <p><span className="font-semibold">Size:</span> {(storedCvInfo.size / 1024).toFixed(2)} KB</p>
+                  <p><span className="font-semibold">Last Updated:</span> {new Date(storedCvInfo.lastUpdated).toLocaleString()}</p>
                 </div>
               </div>
               <div className="flex space-x-2 pt-2">
-                <Button variant="outline" disabled>
-                  <Download className="mr-2 h-4 w-4" /> View/Download CV (Coming Soon)
+                <Button variant="outline" onClick={handleDownloadMockCv}>
+                  <Download className="mr-2 h-4 w-4" /> Download My CV (Mock)
                 </Button>
               </div>
             </>
           ) : (
-            <p className="text-muted-foreground">No CV has been uploaded yet.</p>
+             <Alert variant="default" className="border-blue-200 bg-blue-50 text-blue-700">
+                <Info className="h-5 w-5 text-blue-600" />
+                <AlertTitle>No CV on File</AlertTitle>
+                <AlertDescription>You haven&apos;t uploaded a CV yet. Please upload one below.</AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -164,31 +197,33 @@ export default function ManageCvPage() {
                  <Input
                     id="cv-upload-input"
                     type="file"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     onChange={handleFileChange}
                     className="hidden"
                 />
-                {cvFile && <span className="text-sm text-muted-foreground truncate max-w-xs">Selected: {cvFile.name}</span>}
+                {selectedCvFile && <span className="text-sm text-muted-foreground truncate max-w-xs">Selected: {selectedCvFile.name}</span>}
             </div>
 
-            {cvFile && (
-                 <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-700">
-                    <CheckCircle className="h-5 w-5 text-blue-600"/>
-                    <AlertTitle>File Ready</AlertTitle>
+            {selectedCvFile && (
+                 <Alert variant="default" className="bg-green-50 border-green-200 text-green-700">
+                    <CheckCircle className="h-5 w-5 text-green-600"/>
+                    <AlertTitle>File Ready for Upload</AlertTitle>
                     <AlertDescription>
-                    "{cvFile.name}" is selected. Click "Upload & Set as Current" to save it.
+                    "{selectedCvFile.name}" is selected. Click the button below to set it as your current CV.
                     </AlertDescription>
                 </Alert>
             )}
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleUploadCv} disabled={!cvFile || isUploading}>
+          <Button onClick={handleUploadCv} disabled={!selectedCvFile || isUploading}>
             {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-            {cvFileName ? "Upload & Replace Current CV" : "Upload & Set as Current CV"}
+            {storedCvInfo ? "Upload & Replace Current CV" : "Upload & Set as Current CV"}
           </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
+    

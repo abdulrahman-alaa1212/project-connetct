@@ -17,11 +17,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { UserSubmittedAssessment } from "@/types";
-import { Eye, Loader2, ServerCrash, ListChecks, Edit3, Trash2, FilePenLine } from "lucide-react";
+import { Eye, Loader2, ServerCrash, ListChecks, Edit3, Trash2, FilePenLine, FileText, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { mockAssessments as allAdminMockAssessments } from "@/app/(app)/admin/reports/page"; // To get admin updates
 
 export default function MyAssessmentsPage() {
   const { user } = useAuth();
@@ -40,11 +41,26 @@ export default function MyAssessmentsPage() {
       setIsLoading(true);
       const storageKey = `user_assessments_${user.hospitalId}`;
       const storedAssessments = localStorage.getItem(storageKey);
+      let hospitalAssessments: UserSubmittedAssessment[] = [];
       if (storedAssessments) {
-        setMyAssessments(JSON.parse(storedAssessments));
-      } else {
-        setMyAssessments([]);
+        hospitalAssessments = JSON.parse(storedAssessments);
       }
+
+      // Enrich hospital assessments with latest admin feedback from localStorage
+      const enrichedAssessments = hospitalAssessments.map(asm => {
+        const adminNotes = typeof window !== 'undefined' ? localStorage.getItem(`assessment_notes_${asm.id}`) : null;
+        const adminPdfName = typeof window !== 'undefined' ? localStorage.getItem(`assessment_pdf_response_${asm.id}`) : null;
+        const adminStatus = typeof window !== 'undefined' ? localStorage.getItem(`assessment_status_${asm.id}`) : null;
+        
+        return {
+          ...asm,
+          adminResponseText: adminNotes !== null ? adminNotes : asm.adminResponseText,
+          adminResponsePdfName: adminPdfName !== null ? adminPdfName : asm.adminResponsePdfName,
+          status: adminStatus !== null ? (adminStatus as UserSubmittedAssessment["status"]) : asm.status,
+        };
+      });
+
+      setMyAssessments(enrichedAssessments);
       setIsLoading(false);
     } else {
       setMyAssessments([]);
@@ -57,7 +73,17 @@ export default function MyAssessmentsPage() {
   }, [loadAssessments]);
 
   const handleViewDetails = (assessment: UserSubmittedAssessment) => {
-    setSelectedAssessmentForView(assessment);
+    // Re-fetch latest admin details directly when opening modal for max freshness
+    const adminNotes = typeof window !== 'undefined' ? localStorage.getItem(`assessment_notes_${assessment.id}`) : assessment.adminResponseText;
+    const adminPdfName = typeof window !== 'undefined' ? localStorage.getItem(`assessment_pdf_response_${assessment.id}`) : assessment.adminResponsePdfName;
+    const adminStatus = typeof window !== 'undefined' ? localStorage.getItem(`assessment_status_${assessment.id}`) : assessment.status;
+
+    setSelectedAssessmentForView({
+      ...assessment,
+      adminResponseText: adminNotes || undefined,
+      adminResponsePdfName: adminPdfName || undefined,
+      status: (adminStatus as UserSubmittedAssessment["status"]) || assessment.status,
+    });
     setIsViewModalOpen(true);
   };
 
@@ -79,6 +105,22 @@ export default function MyAssessmentsPage() {
     setAssessmentIdToDelete(null);
     setIsDeleteConfirmOpen(false);
   };
+  
+  const handleDownloadAdminReportPlaceholder = (pdfName: string) => {
+    // Simulate PDF download for now
+    toast({
+      title: "Download Initiated (Simulated)",
+      description: `Simulating download of ${pdfName}. In a real app, this would download the actual PDF.`,
+    });
+    const blob = new Blob([`This is a placeholder for the admin report: ${pdfName}`], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = pdfName.endsWith('.pdf') ? pdfName : `${pdfName.replace(/\s+/g, '_')}_placeholder.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   if (isLoading) {
     return (
@@ -113,9 +155,9 @@ export default function MyAssessmentsPage() {
             <CardTitle className="text-2xl sm:text-3xl font-bold text-primary flex items-center">
               <ListChecks className="mr-3 h-8 w-8" /> My Submitted Assessments
             </CardTitle>
-            <CardDescription>Review your past technology needs assessments and their AI-generated insights. You can also edit or delete your submissions.</CardDescription>
+            <CardDescription>Review your past technology needs assessments, their AI-generated insights, and admin feedback. You can also edit or delete your submissions.</CardDescription>
           </div>
-           <Button asChild>
+           <Button asChild className="mt-4 sm:mt-0">
             <Link href="/assessment">
               <FilePenLine className="mr-2 h-4 w-4" /> Submit New Assessment
             </Link>
@@ -145,9 +187,8 @@ export default function MyAssessmentsPage() {
                     <TableCell>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         assessment.status === "Submitted" ? "bg-blue-100 text-blue-800" :
-                        assessment.status === "In Review" ? "bg-yellow-100 text-yellow-800" : // Example, adjust as needed
-                        assessment.status === "Responded" ? "bg-green-100 text-green-800" : 
-                        assessment.status === "Completed" ? "bg-purple-100 text-purple-800" : // Example
+                        assessment.status === "Reviewed" ? "bg-yellow-100 text-yellow-800" : 
+                        assessment.status === "Completed" ? "bg-green-100 text-green-800" : 
                         "bg-gray-100 text-gray-800" 
                        }`}>
                         {assessment.status}
@@ -227,10 +268,26 @@ export default function MyAssessmentsPage() {
                   <h4 className="font-semibold text-foreground mb-1">Admin Feedback/Report:</h4>
                   {selectedAssessmentForView.adminResponseText ? 
                     <p className="whitespace-pre-wrap bg-blue-50 p-3 rounded-md text-blue-700">{selectedAssessmentForView.adminResponseText}</p> 
-                    : <p className="italic text-muted-foreground">(No admin feedback provided yet.)</p>
+                    : <p className="italic text-muted-foreground">(No admin text feedback provided yet.)</p>
                   }
-                  {selectedAssessmentForView.adminResponsePdfName && 
-                    <p className="text-sm mt-2 text-muted-foreground">Admin PDF Report Sent: <span className="font-medium">{selectedAssessmentForView.adminResponsePdfName}</span></p>
+                  {selectedAssessmentForView.adminResponsePdfName ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-green-600" />
+                      <span className="text-sm text-green-700">
+                        Admin PDF Report Sent: <span className="font-medium">{selectedAssessmentForView.adminResponsePdfName}</span>
+                      </span>
+                       <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="p-0 h-auto text-green-700 hover:text-green-800"
+                        onClick={() => handleDownloadAdminReportPlaceholder(selectedAssessmentForView.adminResponsePdfName!)}
+                      >
+                         (Download Placeholder)
+                      </Button>
+                    </div>
+                    ) : (
+                    <p className="italic text-muted-foreground mt-1">(No admin PDF report sent.)</p>
+                    )
                   }
                 </div>
             </div>
@@ -263,6 +320,5 @@ export default function MyAssessmentsPage() {
     </div>
   );
 }
-
 
     

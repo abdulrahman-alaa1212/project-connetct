@@ -6,49 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardCheck, Briefcase, ServerCrash, Hourglass, CheckCircle, XCircle } from "lucide-react";
-import type { JobPosting } from "@/types"; // Assuming JobPosting might be relevant for linking later
+import type { AppliedJob } from "@/types"; 
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-interface AppliedJob {
-  id: string;
-  jobTitle: string;
-  company: string;
-  dateApplied: string; // ISO String
-  status: "Submitted" | "Viewed" | "Under Review" | "Shortlisted" | "Offered" | "Rejected" | "Withdrawn";
-}
-
-// Mock data for applications - in a real app, this would come from a backend/localStorage after applying
-const mockApplications: AppliedJob[] = [
-  {
-    id: "app1",
-    jobTitle: "VR Software Engineer",
-    company: "Innovatech VR Solutions",
-    dateApplied: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
-    status: "Under Review",
-  },
-  {
-    id: "app2",
-    jobTitle: "AR/MR Content Developer",
-    company: "Healthcare XR Inc.",
-    dateApplied: new Date(Date.now() - 86400000 * 7).toISOString(), // 7 days ago
-    status: "Submitted",
-  },
-  {
-    id: "app3",
-    jobTitle: "XR Project Manager (Healthcare)",
-    company: "MedSimulators Co.",
-    dateApplied: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
-    status: "Viewed",
-  },
-   {
-    id: "app4",
-    jobTitle: "VR Training Specialist",
-    company: "Global Medical Training",
-    dateApplied: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
-    status: "Rejected",
-  },
-];
 
 export default function MyApplicationsPage() {
   const { user } = useAuth();
@@ -56,19 +16,19 @@ export default function MyApplicationsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching applications for the logged-in user
-    // In a real app, this would fetch from a service or localStorage where applications are stored
     setIsLoading(true);
-    setTimeout(() => {
-      if (user?.role === 'professional') {
-        // For now, just use mock data for any professional user.
-        // Later, this could be filtered by user ID if applications were stored with userId.
-        setApplications(mockApplications);
+    if (user?.id) {
+      const storageKey = `user_applications_${user.id}`;
+      const storedApplications = localStorage.getItem(storageKey);
+      if (storedApplications) {
+        setApplications(JSON.parse(storedApplications));
       } else {
         setApplications([]);
       }
-      setIsLoading(false);
-    }, 500);
+    } else {
+      setApplications([]);
+    }
+    setIsLoading(false);
   }, [user]);
 
   const getStatusBadgeVariant = (status: AppliedJob["status"]): "default" | "secondary" | "destructive" | "outline" => {
@@ -91,7 +51,7 @@ export default function MyApplicationsPage() {
   
   if (user?.role !== 'professional') {
     return (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full p-4">
             <Alert variant="destructive" className="max-w-lg">
                 <XCircle className="h-5 w-5"/>
                 <AlertTitle>Access Denied</AlertTitle>
@@ -129,7 +89,7 @@ export default function MyApplicationsPage() {
             <div className="text-center py-10">
               <Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold">No Applications Found</h3>
-              <p className="text-muted-foreground">You haven&apos;t applied for any opportunities yet.</p>
+              <p className="text-muted-foreground">You haven&apos;t applied for any opportunities yet. Visit the Job Board to find your next role!</p>
             </div>
           ) : (
             <Table>
@@ -162,9 +122,10 @@ export default function MyApplicationsPage() {
         </CardContent>
       </Card>
        <p className="text-xs text-muted-foreground text-center">
-        Note: Application data is currently mocked. In a real system, this page would reflect actual applications you've submitted.
+        Note: Application statuses are illustrative. In a real system, these would be updated by employers/admins.
       </p>
     </div>
   );
 }
 
+    
