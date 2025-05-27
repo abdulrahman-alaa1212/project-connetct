@@ -29,17 +29,30 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle, Trash2, Save } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Loader2, PlusCircle, Trash2, Save, Eye, FilePenLine, Info, Undo2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { summarizeAssessment, type SummarizeAssessmentOutput } from "@/ai/flows/summarize-assessment";
 import { matchVrArSolutions, type MatchVrArSolutionsOutput } from "@/ai/flows/match-vr-ar-solutions";
 import { useAuth } from "@/hooks/useAuth";
-import { useSearchParams, useRouter } from "next/navigation"; // Import useRouter
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import Link from "next/link";
+
 
 const hospitalTypes = ["Public", "Private", "University", "Military", "Charity", "Other"];
 const departmentExamples = [
-  "Surgery (all types)", "Radiology and Diagnostics", "Medical Education and Training", 
-  "Emergency Medicine", "Intensive Care", "Rehabilitation", "Nursing", 
+  "Surgery (all types)", "Radiology and Diagnostics", "Medical Education and Training",
+  "Emergency Medicine", "Intensive Care", "Rehabilitation", "Nursing",
   "Marketing and Patient Relations", "General Administration", "Other (Please specify)"
 ];
 const yesNoOptions = ["Yes", "No"];
@@ -63,11 +76,11 @@ const budgetAllocationOptions = [
   "No, and we need cost estimates based on recommendations",
 ];
 const timelineOptions = [
-  "Within the next 3 months", "Within 3-6 months", "Within 6-12 months", 
+  "Within the next 3 months", "Within 3-6 months", "Within 6-12 months",
   "Within the next year", "Not yet determined/depends on assessment results"
 ];
 const communicationPreferenceOptions = [
-  "Via registered email", "Via phone call", 
+  "Via registered email", "Via phone call",
   "Schedule an online meeting", "Schedule an in-person meeting (if possible)"
 ];
 
@@ -116,99 +129,94 @@ export function AssessmentForm() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [submissionResult, setSubmissionResult] = useState<SummarizeAssessmentOutput | null>(null);
   const [solutionMatches, setSolutionMatches] = useState<MatchVrArSolutionsOutput | null>(null);
+  const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
+
+  const draftStorageKey = user?.hospitalId ? `assessment_form_draft_${user.hospitalId}` : null;
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const form = useForm<FullAssessmentSchemaValues>({
     resolver: zodResolver(FullAssessmentSchema),
     defaultValues: {
-      s1_hospitalName: "",
-      s1_hospitalType: undefined,
-      s1_hospitalTypeOther: "",
-      s1_location: "",
-      s1_bedCount: "",
-      s1_concernedDepartments: [],
-      s1_concernedDepartmentsOther: "",
-      s1_contactName: "",
-      s1_contactPosition: "",
-      s1_contactEmail: "",
-      s1_contactPhone: "",
-      s1_hasClearVision: undefined,
-      s1_visionDetails: "",
-      s1_explorePriorityDepartments: "",
-      s2_hasPreviousExperience: undefined,
-      s2_experiences: [],
-      s3_mainGoals: [],
-      s3_mainGoalsOther: "",
-      s3_currentChallenges: "",
-      s3_hasKPIs: undefined,
-      s3_kpiDetails: "",
-      s4_wifiPerformance: undefined,
-      s4_wifiDetails: "",
-      s4_bandwidthConstraints: undefined,
-      s4_bandwidthDetails: "",
-      s4_networkSecurityPolicies: undefined,
-      s4_networkSecurityDetails: "",
-      s4_hasSpecializedEquipment: undefined,
-      s4_equipmentDetails: "",
-      s4_hasHighSpecComputers: undefined,
-      s4_computerDetails: "",
-      s4_mainInformationSystems: "",
-      s4_mainInformationSystemsOther: "",
-      s4_needsIntegration: undefined,
-      s4_integrationDetails: "",
-      s4_itSupportTeam: undefined,
-      s4_itSupportTeamOther: "",
-      s4_itTeamExperience: undefined,
-      s4_itContactPoint: undefined,
-      s4_itContactName: "",
-      s4_staffTechSavviness: undefined,
-      s4_resistanceToChangePlan: "",
-      s5_marketingInterest: undefined,
-      s5_marketingInterestOther: "",
-      s5_marketingGoals: "",
-      s6_departmentAnalyses: [],
-      s7_hasInitialBudget: undefined,
-      s7_budgetRange: "",
-      s7_expectedTimeline: undefined,
-      s7_hasCriticalDeadlines: undefined,
-      s7_deadlineDetails: "",
-      s8_dataSecurityConcerns: undefined,
-      s8_securityConcernDetails: "",
-      s8_regulatoryRequirements: undefined,
-      s8_regulatoryDetails: "",
-      s8_otherInnovationProjects: "",
-      s8_keyStakeholders: "",
-      s9_questionsForYura: "",
-      s9_additionalInfo: "",
-      s9_communicationPreferences: [],
-      s9_preferredContactTimes: "",
+      // ... (existing default values from previous implementation)
+      s1_hospitalName: "", s1_hospitalType: undefined, s1_hospitalTypeOther: "", s1_location: "", s1_bedCount: "", s1_concernedDepartments: [], s1_concernedDepartmentsOther: "", s1_contactName: "", s1_contactPosition: "", s1_contactEmail: "", s1_contactPhone: "", s1_hasClearVision: undefined, s1_visionDetails: "", s1_explorePriorityDepartments: "", s2_hasPreviousExperience: undefined, s2_experiences: [], s3_mainGoals: [], s3_mainGoalsOther: "", s3_currentChallenges: "", s3_hasKPIs: undefined, s3_kpiDetails: "", s4_wifiPerformance: undefined, s4_wifiDetails: "", s4_bandwidthConstraints: undefined, s4_bandwidthDetails: "", s4_networkSecurityPolicies: undefined, s4_networkSecurityDetails: "", s4_hasSpecializedEquipment: undefined, s4_equipmentDetails: "", s4_hasHighSpecComputers: undefined, s4_computerDetails: "", s4_mainInformationSystems: "", s4_mainInformationSystemsOther: "", s4_needsIntegration: undefined, s4_integrationDetails: "", s4_itSupportTeam: undefined, s4_itSupportTeamOther: "", s4_itTeamExperience: undefined, s4_itContactPoint: undefined, s4_itContactName: "", s4_staffTechSavviness: undefined, s4_resistanceToChangePlan: "", s5_marketingInterest: undefined, s5_marketingInterestOther: "", s5_marketingGoals: "", s6_departmentAnalyses: [], s7_hasInitialBudget: undefined, s7_budgetRange: "", s7_expectedTimeline: undefined, s7_hasCriticalDeadlines: undefined, s7_deadlineDetails: "", s8_dataSecurityConcerns: undefined, s8_securityConcernDetails: "", s8_regulatoryRequirements: undefined, s8_regulatoryDetails: "", s8_otherInnovationProjects: "", s8_keyStakeholders: "", s9_questionsForYura: "", s9_additionalInfo: "", s9_communicationPreferences: [], s9_preferredContactTimes: "",
     },
   });
 
+  // Autosave draft functionality
+  const watchedValues = form.watch();
+  useEffect(() => {
+    if (isInitializing || !draftStorageKey || isSubmittedSuccessfully || isEditMode) return; // Don't autosave during init, if submitted, or in edit mode (edit has its own load)
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (form.formState.isDirty) { // Only save if form has been touched
+        localStorage.setItem(draftStorageKey, JSON.stringify(watchedValues));
+        // console.log("Draft autosaved");
+      }
+    }, 1000); // Debounce time: 1 second
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [watchedValues, draftStorageKey, isInitializing, isSubmittedSuccessfully, form.formState.isDirty, isEditMode]);
+
+
+  // Load draft or existing assessment for editing
   useEffect(() => {
     setIsEditMode(!!editId);
-    if (editId && user && user.hospitalId) {
-      setIsInitializing(true);
-      const storageKey = `user_assessments_${user.hospitalId}`;
-      const storedAssessments = localStorage.getItem(storageKey);
-      if (storedAssessments) {
-        const assessments: UserSubmittedAssessment[] = JSON.parse(storedAssessments);
-        const assessmentToEdit = assessments.find(a => a.id === editId);
-        if (assessmentToEdit) {
-          form.reset(assessmentToEdit.formData);
-          // Optionally load AI summary/solutions if you want to display them during edit
-          // setSubmissionResult(assessmentToEdit.aiSummary ? { summary: assessmentToEdit.aiSummary } : null);
-          // setSolutionMatches(assessmentToEdit.aiSolutions || null);
-        } else {
-          toast({ variant: "destructive", title: "Error", description: "Assessment not found for editing." });
-          router.push("/my-assessments"); // Redirect if not found
+    setIsInitializing(true);
+    setIsSubmittedSuccessfully(false); // Reset submission state on load/editId change
+
+    const loadData = async () => {
+      if (editId && user && user.hospitalId) {
+        const storageKey = `user_assessments_${user.hospitalId}`;
+        const storedAssessments = localStorage.getItem(storageKey);
+        if (storedAssessments) {
+          const assessments: UserSubmittedAssessment[] = JSON.parse(storedAssessments);
+          const assessmentToEdit = assessments.find(a => a.id === editId);
+          if (assessmentToEdit) {
+            form.reset(assessmentToEdit.formData);
+          } else {
+            toast({ variant: "destructive", title: "Error", description: "Assessment not found for editing." });
+            router.push("/my-assessments");
+          }
         }
+      } else if (draftStorageKey && !editId) { // Only load draft if not in edit mode
+        const draftDataJson = localStorage.getItem(draftStorageKey);
+        if (draftDataJson) {
+          try {
+            const draftData = JSON.parse(draftDataJson);
+            // Simple prompt to restore draft
+            if (window.confirm("You have a saved draft. Would you like to restore it?")) {
+              form.reset(draftData);
+              toast({ title: "Draft Restored", description: "Your previously saved draft has been loaded."});
+            } else {
+              localStorage.removeItem(draftStorageKey); // User chose not to restore
+              form.reset(); // Reset to default values
+            }
+          } catch (e) {
+            console.error("Failed to parse draft data", e);
+            localStorage.removeItem(draftStorageKey); // Clear corrupted draft
+            form.reset();
+          }
+        } else {
+            form.reset(); // Reset to defaults if no draft and not editing
+        }
+      } else {
+         form.reset(); // Ensure form is reset if no editId and no draft key (e.g. user not logged in yet)
       }
       setIsInitializing(false);
-    } else {
-      form.reset(); // Reset to defaults if not in edit mode or no editId
-      setIsInitializing(false);
-    }
-  }, [editId, user, form, toast, router]);
+    };
+    
+    loadData();
+
+  }, [editId, user, draftStorageKey, form, toast, router]);
+
 
   const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
     control: form.control,
@@ -266,13 +274,13 @@ export function AssessmentForm() {
         dataString += `  Still in Use: ${exp.stillInUse}${exp.stillInUse === "No" ? ` (Reason: ${exp.stillInUseReason})` : ''}\n`;
       });
     }
-    
+
     dataString += `\nSection 3: Goals and Challenges\n`;
     dataString += `Main Goals: ${values.s3_mainGoals.join(', ')}${values.s3_mainGoals.includes("Other (Please specify)") ? ` (${values.s3_mainGoalsOther})` : ''}\n`;
     dataString += `Current Challenges: ${values.s3_currentChallenges}\n`;
     dataString += `Defined KPIs: ${values.s3_hasKPIs}\n`;
     if (values.s3_hasKPIs === "Yes, we have clear indicators" || values.s3_hasKPIs === "We are working on defining them") dataString += `KPI Details: ${values.s3_kpiDetails}\n`;
-    
+
     dataString += `\nSection 4: Infrastructure and Resources\n`;
     dataString += `Wi-Fi Performance: ${values.s4_wifiPerformance}${values.s4_wifiPerformance === "Partially" || values.s4_wifiPerformance === "No" ? ` (Details: ${values.s4_wifiDetails})` : ''}\n`;
     dataString += `Bandwidth Constraints: ${values.s4_bandwidthConstraints}${values.s4_bandwidthConstraints === "Yes" ? ` (Details: ${values.s4_bandwidthDetails})` : ''}\n`;
@@ -322,7 +330,7 @@ export function AssessmentForm() {
     if (values.s7_budgetRange) dataString += `Budget Range: ${values.s7_budgetRange}\n`;
     dataString += `Expected Timeline for First Project: ${values.s7_expectedTimeline}\n`;
     dataString += `Critical Deadlines: ${values.s7_hasCriticalDeadlines}${values.s7_hasCriticalDeadlines === "Yes" ? ` (Details: ${values.s7_deadlineDetails})` : ''}\n`;
-    
+
     dataString += `\nSection 8: Other Concerns and Considerations\n`;
     dataString += `Data Security Concerns: ${values.s8_dataSecurityConcerns}${values.s8_dataSecurityConcerns === "Yes" ? ` (Details: ${values.s8_securityConcernDetails})` : ''}\n`;
     dataString += `Regulatory Requirements: ${values.s8_regulatoryRequirements}${values.s8_regulatoryRequirements === "Yes" || values.s8_regulatoryRequirements === "Not sure" ? ` (Details: ${values.s8_regulatoryDetails})` : ''}\n`;
@@ -334,7 +342,7 @@ export function AssessmentForm() {
     dataString += `Additional Information: ${values.s9_additionalInfo}\n`;
     dataString += `Communication Preferences: ${values.s9_communicationPreferences.join(', ')}\n`;
     dataString += `Preferred Contact Times: ${values.s9_preferredContactTimes}\n`;
-    
+
     return dataString;
   }
 
@@ -349,7 +357,7 @@ export function AssessmentForm() {
     setSolutionMatches(null);
 
     const assessmentDataString = generateAssessmentDataString(values);
-    
+
     try {
       const summaryOutput = await summarizeAssessment({ assessmentData: assessmentDataString });
       setSubmissionResult(summaryOutput);
@@ -361,24 +369,22 @@ export function AssessmentForm() {
       let assessments: UserSubmittedAssessment[] = storedAssessments ? JSON.parse(storedAssessments) : [];
 
       if (isEditMode && editId) {
-        // Update existing assessment
-        assessments = assessments.map(asm => 
-          asm.id === editId 
-          ? { 
-              ...asm, 
-              formData: values, 
+        assessments = assessments.map(asm =>
+          asm.id === editId
+          ? {
+              ...asm,
+              formData: values,
               hospitalName: values.s1_hospitalName,
               primaryGoalsSummary: values.s3_mainGoals.slice(0, 2).join(', ') + (values.s3_mainGoals.length > 2 ? '...' : ''),
               aiSummary: summaryOutput.summary,
               aiSolutions: solutionsOutput,
-              submissionDate: new Date().toISOString(), // Update submission date on edit
-              status: "Submitted" // Or keep original status, or 'Updated' - TBD
-            } 
+              submissionDate: new Date().toISOString(),
+              status: "Submitted"
+            }
           : asm
         );
         toast({ title: "Assessment Updated", description: "Your assessment has been successfully updated and re-analyzed." });
       } else {
-        // Create new assessment
         const newAssessmentId = Date.now().toString();
         const newAssessment: UserSubmittedAssessment = {
           id: newAssessmentId,
@@ -390,21 +396,23 @@ export function AssessmentForm() {
           formData: values,
           aiSummary: summaryOutput.summary,
           aiSolutions: solutionsOutput,
-          adminResponseText: "", // Initialize admin response fields
+          adminResponseText: "",
           adminResponsePdfName: ""
         };
         assessments.push(newAssessment);
         toast({ title: "Assessment Submitted", description: "Your assessment has been successfully submitted and analyzed." });
+        if (draftStorageKey) {
+            localStorage.removeItem(draftStorageKey); // Clear draft on successful submission
+        }
       }
-      
+
       localStorage.setItem(storageKey, JSON.stringify(assessments));
-      
+      setIsSubmittedSuccessfully(true); // Set flag to show results view
+
       if (isEditMode) {
-        router.push("/my-assessments"); // Navigate back after editing
-      } else {
-        // For new submissions, AI results are already displayed below the form.
-        // Optionally, could clear form here: form.reset(); setSubmissionResult(null); setSolutionMatches(null);
+        router.push("/my-assessments");
       }
+      // For new submissions, AI results are displayed below due to isSubmittedSuccessfully flag.
 
     } catch (error) {
       console.error("Submission error:", error);
@@ -418,6 +426,18 @@ export function AssessmentForm() {
     }
   }
 
+  const handleStartNewAssessment = () => {
+    if (draftStorageKey) {
+        localStorage.removeItem(draftStorageKey);
+    }
+    form.reset();
+    setIsSubmittedSuccessfully(false);
+    setSubmissionResult(null);
+    setSolutionMatches(null);
+    setIsEditMode(false); // Ensure we are not in edit mode
+    router.replace('/assessment', undefined); // Clear editId from URL if present
+  };
+
   if (isInitializing) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -426,12 +446,51 @@ export function AssessmentForm() {
       </div>
     );
   }
-  
+
   const pageTitle = isEditMode ? "Edit Hospital Technology Needs Assessment" : "Hospital Technology Needs Assessment";
-  const pageDescription = isEditMode 
+  const pageDescription = isEditMode
     ? "Please review and update the details of your assessment. Your answers will help us refine our understanding and recommendations."
     : "Please answer the following questions with as much detail and accuracy as possible. Your answers will help us better understand your needs and provide appropriate recommendations.";
-  const submitButtonText = isEditMode ? "Update Assessment" : "Submit Assessment";
+  const submitButtonText = isEditMode ? "Update Assessment" : "Submit Assessment & Get AI Analysis";
+
+  if (isSubmittedSuccessfully && !isEditMode) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Assessment Submitted Successfully!</CardTitle>
+            <CardDescription>Thank you. Your assessment has been processed. Below are the AI-generated insights.</CardDescription>
+          </CardHeader>
+        </Card>
+        {submissionResult && (
+          <Card>
+            <CardHeader><CardTitle className="text-xl text-primary">AI Generated Summary</CardTitle></CardHeader>
+            <CardContent><pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{submissionResult.summary}</pre></CardContent>
+          </Card>
+        )}
+        {solutionMatches && (
+          <Card>
+            <CardHeader><CardTitle className="text-xl text-primary">AI Suggested Solutions</CardTitle></CardHeader>
+            <CardContent>
+              <h3 className="font-semibold">Solutions:</h3>
+              <pre className="whitespace-pre-wrap mb-2 bg-muted p-4 rounded-md text-sm">{solutionMatches.suggestedSolutions}</pre>
+              <h3 className="font-semibold">Reasoning:</h3>
+              <pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{solutionMatches.reasoning}</pre>
+            </CardContent>
+          </Card>
+        )}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button onClick={() => router.push("/my-assessments")} variant="outline">
+            <Eye className="mr-2 h-4 w-4" /> View My Assessments
+          </Button>
+          <Button onClick={handleStartNewAssessment}>
+            <FilePenLine className="mr-2 h-4 w-4" /> Submit Another Assessment
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-8">
@@ -439,12 +498,18 @@ export function AssessmentForm() {
         <CardHeader>
           <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">{pageTitle}</CardTitle>
           <CardDescription>{pageDescription}</CardDescription>
+           {!isEditMode && (
+            <p className="text-sm text-muted-foreground pt-2 flex items-center">
+              <Info className="mr-2 h-4 w-4 text-primary" />
+              Your progress is automatically saved as a draft.
+            </p>
+          )}
         </CardHeader>
       </Card>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          
+
           {/* Section 1: General Information */}
           <Card>
             <CardHeader>
@@ -456,7 +521,7 @@ export function AssessmentForm() {
               {watchS1HospitalType === "Other" && ( <FormField control={form.control} name="s1_hospitalTypeOther" render={({ field }) => ( <FormItem> <FormLabel>Please specify other hospital type:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
               <FormField control={form.control} name="s1_location" render={({ field }) => ( <FormItem> <FormLabel>3. Location (City/Governorate):</FormLabel> <FormControl><Input placeholder="City/Governorate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               <FormField control={form.control} name="s1_bedCount" render={({ field }) => ( <FormItem> <FormLabel>4. Approximate Bed Count (as an indicator of hospital size):</FormLabel> <FormControl><Input type="number" placeholder="Number of beds" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-             
+
               <FormField control={form.control} name="s1_concernedDepartments" render={({ field }) => (
                 <FormItem>
                   <FormLabel>5. Medical and administrative departments primarily concerned with technology application (select multiple):</FormLabel>
@@ -486,7 +551,7 @@ export function AssessmentForm() {
                 </FormItem>
               )} />
               {watchS1ConcernedDepartments?.includes("Other (Please specify)") && ( <FormField control={form.control} name="s1_concernedDepartmentsOther" render={({ field }) => ( <FormItem> <FormLabel>Please specify other department:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
-              
+
               <FormLabel className="font-semibold block pt-2">6. Primary Contact Information for this assessment/project:</FormLabel>
               <FormField control={form.control} name="s1_contactName" render={({ field }) => ( <FormItem> <FormLabel>Full Name:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               <FormField control={form.control} name="s1_contactPosition" render={({ field }) => ( <FormItem> <FormLabel>Position/Job Title:</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -532,7 +597,10 @@ export function AssessmentForm() {
                   <FormLabel>2. If "Yes", please clarify for each previous experience (add more experiences if necessary):</FormLabel>
                   {experienceFields.map((item, index) => (
                     <Card key={item.id} className="p-4 space-y-3">
-                      <h4 className="font-semibold">Experience ({index + 1})</h4>
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-semibold text-lg text-primary">Experience ({index + 1})</h4>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeExperience(index)}><Trash2 className="text-destructive h-5 w-5" /></Button>
+                      </div>
                       <FormField control={form.control} name={`s2_experiences.${index}.companyName`} render={({ field }) => (<FormItem><FormLabel>a. Who did you deal with (Company/Developer/Entity name)?</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name={`s2_experiences.${index}.productDescription`} render={({ field }) => (<FormItem><FormLabel>b. What was the product, application, or project? (Brief description, VR/AR/MR tech used)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name={`s2_experiences.${index}.positives`} render={({ field }) => (<FormItem><FormLabel>c. What were the main positives or benefits achieved?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -547,7 +615,6 @@ export function AssessmentForm() {
                       {form.watch(`s2_experiences.${index}.stillInUse`) === "No" && (
                          <FormField control={form.control} name={`s2_experiences.${index}.stillInUseReason`} render={({ field }) => (<FormItem><FormLabel>If No, why is it no longer in use?</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                       )}
-                      <Button type="button" variant="destructive" size="sm" onClick={() => removeExperience(index)}><Trash2 className="mr-2 h-4 w-4" /> Remove Experience</Button>
                     </Card>
                   ))}
                   <Button type="button" variant="outline" onClick={() => appendExperience({ companyName: "", productDescription: "", positives: "", negatives: "", stillInUse: undefined, stillInUseReason: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Another Experience</Button>
@@ -638,7 +705,7 @@ export function AssessmentForm() {
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
               {(watchS4NetworkSecurityPolicies === "Yes") && <FormField control={form.control} name="s4_networkSecurityDetails" render={({ field }) => (<FormItem><FormLabel>Security Policies Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
-            
+
               <FormLabel className="font-semibold block pt-2">2. Current Technical Devices and Equipment:</FormLabel>
               <FormField control={form.control} name="s4_hasSpecializedEquipment" render={({ field }) => (
                 <FormItem><FormLabel>a. Does the hospital currently own any specialized VR headsets, AR headsets/glasses, or MR headsets?</FormLabel>
@@ -648,7 +715,7 @@ export function AssessmentForm() {
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
               {watchS4HasSpecializedEquipment === "Yes" && <FormField control={form.control} name="s4_equipmentDetails" render={({ field }) => (<FormItem><FormLabel>Please list types, quantity, and condition (new, used, etc.):</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />}
-              
+
               <FormField control={form.control} name="s4_hasHighSpecComputers" render={({ field }) => (
                 <FormItem><FormLabel>b. Are high-specification desktop/laptop computers or workstations available (powerful processors, advanced graphics cards, sufficient RAM) that can be dedicated to running AR/MR applications (if necessary)?</FormLabel>
                 <Controller control={form.control} name="s4_hasHighSpecComputers" render={({field: controllerField}) => (
@@ -678,7 +745,7 @@ export function AssessmentForm() {
                   </RadioGroup>)} /> <FormMessage />
                 </FormItem>)} />
               {watchS4ITSupportTeam === "Other" && <FormField control={form.control} name="s4_itSupportTeamOther" render={({ field }) => (<FormItem><FormLabel>Other Support Team Type Clarification:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />}
-              
+
               <FormField control={form.control} name="s4_itTeamExperience" render={({ field }) => (
                 <FormItem><FormLabel>b. How experienced is this team (or external entity) in handling new advanced technologies or specialized hardware/software requirements (like those for AR/MR)?</FormLabel>
                 <Controller control={form.control} name="s4_itTeamExperience" render={({field: controllerField}) => (
@@ -704,7 +771,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s4_resistanceToChangePlan" render={({ field }) => (<FormItem><FormLabel>Do you anticipate any resistance to change when introducing these new technologies? How do you plan to handle it?</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
-          
+
           {/* Section 5: VR/AR in Marketing */}
           <Card>
             <CardHeader><CardTitle>Section 5: Using VR/AR in Marketing and Hospital Promotion (if applicable)</CardTitle></CardHeader>
@@ -726,15 +793,15 @@ export function AssessmentForm() {
           {/* Section 6: Analysis of Current Departments and Processes */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 6: Analysis of Current Departments and Processes (detailed for each concerned department)</CardTitle>
-              <CardDescription>Instructions: Please repeat answering the following set of questions for each main department in the hospital where you see potential for AR/MR application, or departments identified in Q5 or Q9 of Section 1.</CardDescription>
+              <CardTitle>Section 6: Analysis of Current Departments and Processes</CardTitle>
+              <CardDescription>Please repeat answering the following set of questions for each main department in the hospital where you see potential for AR/MR application.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {departmentAnalysisFields.map((item, index) => (
-                <Card key={item.id} className="p-4 space-y-3">
+                <Card key={item.id} className="p-4 space-y-3 border-border border">
                   <div className="flex justify-between items-center">
-                    <h4 className="font-semibold">Department Analysis ({index + 1})</h4>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeDepartmentAnalysis(index)}><Trash2 className="text-destructive" /></Button>
+                    <h4 className="font-semibold text-lg text-primary">Department Analysis ({index + 1})</h4>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeDepartmentAnalysis(index)}><Trash2 className="text-destructive h-5 w-5" /></Button>
                   </div>
                   <FormField control={form.control} name={`s6_departmentAnalyses.${index}.departmentName`} render={({ field }) => (<FormItem><FormLabel>1. Department Name:</FormLabel><FormControl><Input {...field} placeholder="Should be from previously mentioned departments or added new" /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name={`s6_departmentAnalyses.${index}.mainEquipment`} render={({ field }) => (<FormItem><FormLabel>2. a. What are the main medical or technical devices and equipment currently used extensively in this department? (Please provide specific examples)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -746,36 +813,36 @@ export function AssessmentForm() {
                         {departmentProcedureTypes.map(opt => (<FormItem key={opt} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={opt} /></FormControl><FormLabel className="font-normal">{opt}</FormLabel></FormItem>))}
                       </RadioGroup>)} /> <FormMessage />
                     </FormItem>)} />
-                  
+
                   <FormLabel className="font-semibold block pt-2">5. d. What are the most prominent problems, challenges, weaknesses, or limitations you currently face in the methods and procedures followed in this department (whether traditional or modern)?</FormLabel>
-                  {form.watch(`s6_departmentAnalyses.${index}.procedureType`) === departmentProcedureTypes[0] && 
+                  {form.watch(`s6_departmentAnalyses.${index}.procedureType`) === departmentProcedureTypes[0] &&
                     <FormField control={form.control} name={`s6_departmentAnalyses.${index}.traditionalProblems`} render={({ field }) => (<FormItem><FormLabel>If traditional, what are its problems? (e.g., difficulty in standardization, reliance on individual experience, time-consuming, potential for human error)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                   }
-                  {form.watch(`s6_departmentAnalyses.${index}.procedureType`) === departmentProcedureTypes[1] && 
+                  {form.watch(`s6_departmentAnalyses.${index}.procedureType`) === departmentProcedureTypes[1] &&
                     <FormField control={form.control} name={`s6_departmentAnalyses.${index}.modernProblems`} render={({ field }) => (<FormItem><FormLabel>If modern, what are its problems? (e.g., cost of devices, complexity of operation, need for intensive training, difficulty integrating with other systems)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                   }
                    <FormField control={form.control} name={`s6_departmentAnalyses.${index}.generalProblems`} render={({ field }) => (<FormItem><FormLabel>General problems facing the department in its operations:</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                
+
                   <FormLabel className="font-semibold block pt-2">6. e. Do you see any potential opportunities or specific areas within this department where VR, AR, or MR technologies could directly contribute to: (Please clarify with practical examples for each point you select)</FormLabel>
                     {departmentOpportunities.map(opp => (
-                        <div key={opp.id} className="space-y-2 my-2 p-2 border rounded">
+                        <div key={opp.id} className="space-y-2 my-2 p-3 border rounded-md bg-muted/30">
                         <FormField
                             control={form.control}
-                            name={`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any} 
+                            name={`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any}
                             render={({ field }) => (
                             <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                 <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
                                 <FormLabel className="font-normal">{opp.label}</FormLabel>
                             </FormItem>
                             )}
                         />
                         {form.watch(`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any) && opp.otherSpecifyField && (
-                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.otherSpecifyField}` as any} render={({ field }) => (<FormItem><FormLabel>Please specify other area:</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.otherSpecifyField}` as any} render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-sm">Please specify other area:</FormLabel><FormControl><Input {...field} className="mt-1" /></FormControl><FormMessage /></FormItem>)} />
                         )}
                         {form.watch(`s6_departmentAnalyses.${index}.opportunities.${opp.id}` as any) && opp.fieldName && (
-                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.fieldName}` as any} render={({ field }) => (<FormItem><FormLabel>Clarification:</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                             <FormField control={form.control} name={`s6_departmentAnalyses.${index}.opportunities.${opp.fieldName}` as any} render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-sm">Clarification for "{opp.label}":</FormLabel><FormControl><Textarea rows={2} {...field} className="mt-1" /></FormControl><FormMessage /></FormItem>)} />
                         )}
                         </div>
                     ))}
@@ -784,7 +851,7 @@ export function AssessmentForm() {
               <Button type="button" variant="outline" onClick={() => appendDepartmentAnalysis({ departmentName: "", mainEquipment: "", currentProcedures: "", procedureType: undefined, traditionalProblems: "", modernProblems: "", generalProblems: "", opportunities: {} })}> <PlusCircle className="mr-2 h-4 w-4" /> Add New Department Analysis</Button>
             </CardContent>
           </Card>
-          
+
           {/* Section 7: Budget and Expected Timeline */}
           <Card>
             <CardHeader><CardTitle>Section 7: Budget and Expected Timeline (for the project as a whole or the first phase)</CardTitle></CardHeader>
@@ -836,7 +903,7 @@ export function AssessmentForm() {
               <FormField control={form.control} name="s8_keyStakeholders" render={({ field }) => (<FormItem><FormLabel>4. Who are the key stakeholders within the hospital who should be involved in the decision-making process regarding the adoption of these technologies? (e.g., hospital management, department heads, doctors, IT team, quality department, etc.)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
-          
+
           {/* Section 9: Additional Questions and Closing */}
           <Card>
             <CardHeader><CardTitle>Section 9: Additional Questions and Closing</CardTitle></CardHeader>
@@ -872,42 +939,33 @@ export function AssessmentForm() {
               )} />
               <FormField control={form.control} name="s9_preferredContactTimes" render={({ field }) => (<FormItem><FormLabel>Preferred contact times (optional):</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
-             <CardFooter>
-                <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
+             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                        if (draftStorageKey) localStorage.removeItem(draftStorageKey);
+                        form.reset();
+                        toast({ title: "Form Cleared", description: "All fields have been reset."});
+                    }}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto"
+                >
+                    <Undo2 className="mr-2 h-4 w-4" /> Clear Form & Delete Draft
+                </Button>
+                <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {submitButtonText}
                 </Button>
              </CardFooter>
           </Card>
+           {!isEditMode && (
+            <p className="text-xs text-muted-foreground text-center">
+                Note: Your progress is automatically saved as a draft in your browser. This draft will be cleared upon successful submission or if you use the "Clear Form & Delete Draft" button.
+            </p>
+           )}
         </form>
       </Form>
-
-      {(!isEditMode && submissionResult) && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-xl text-primary">Assessment Summary (AI Generated)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{submissionResult.summary}</pre>
-          </CardContent>
-        </Card>
-      )}
-
-      {(!isEditMode && solutionMatches) && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-xl text-primary">Suggested Solutions (AI Generated)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <h3 className="font-semibold">Solutions:</h3>
-            <pre className="whitespace-pre-wrap mb-2 bg-muted p-4 rounded-md text-sm">{solutionMatches.suggestedSolutions}</pre>
-            <h3 className="font-semibold">Reasoning:</h3>
-            <pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{solutionMatches.reasoning}</pre>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
-
-    

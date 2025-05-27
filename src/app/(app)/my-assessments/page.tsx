@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { mockAssessments as allAdminMockAssessments } from "@/app/(app)/admin/reports/page"; // To get admin updates
+// Removed direct import of mockAssessments as we load from user's localStorage
 
 export default function MyAssessmentsPage() {
   const { user } = useAuth();
@@ -32,7 +32,7 @@ export default function MyAssessmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAssessmentForView, setSelectedAssessmentForView] = useState<UserSubmittedAssessment | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  
+
   const [assessmentIdToDelete, setAssessmentIdToDelete] = useState<string | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
@@ -43,14 +43,26 @@ export default function MyAssessmentsPage() {
       const storedAssessments = localStorage.getItem(storageKey);
       let hospitalAssessments: UserSubmittedAssessment[] = [];
       if (storedAssessments) {
-        hospitalAssessments = JSON.parse(storedAssessments);
+        try {
+          hospitalAssessments = JSON.parse(storedAssessments);
+        } catch (e) {
+          console.error("Failed to parse assessments from localStorage", e);
+          hospitalAssessments = []; // Fallback to empty if corrupted
+        }
       }
 
-      // Enrich hospital assessments with latest admin feedback from localStorage
+      // Enrich hospital assessments with latest admin feedback from general localStorage (admin updates)
       const enrichedAssessments = hospitalAssessments.map(asm => {
-        const adminNotes = typeof window !== 'undefined' ? localStorage.getItem(`assessment_notes_${asm.id}`) : null;
-        const adminPdfName = typeof window !== 'undefined' ? localStorage.getItem(`assessment_pdf_response_${asm.id}`) : null;
-        const adminStatus = typeof window !== 'undefined' ? localStorage.getItem(`assessment_status_${asm.id}`) : null;
+        const adminNotesKey = `assessment_notes_${asm.id}`;
+        const adminPdfKey = `assessment_pdf_response_${asm.id}`;
+        const adminStatusKey = `assessment_status_${asm.id}`;
+        
+        let adminNotes, adminPdfName, adminStatus;
+        if (typeof window !== 'undefined') {
+            adminNotes = localStorage.getItem(adminNotesKey);
+            adminPdfName = localStorage.getItem(adminPdfKey);
+            adminStatus = localStorage.getItem(adminStatusKey);
+        }
         
         return {
           ...asm,
@@ -60,7 +72,7 @@ export default function MyAssessmentsPage() {
         };
       });
 
-      setMyAssessments(enrichedAssessments);
+      setMyAssessments(enrichedAssessments.sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime()));
       setIsLoading(false);
     } else {
       setMyAssessments([]);
@@ -72,17 +84,34 @@ export default function MyAssessmentsPage() {
     loadAssessments();
   }, [loadAssessments]);
 
-  const handleViewDetails = (assessment: UserSubmittedAssessment) => {
-    // Re-fetch latest admin details directly when opening modal for max freshness
-    const adminNotes = typeof window !== 'undefined' ? localStorage.getItem(`assessment_notes_${assessment.id}`) : assessment.adminResponseText;
-    const adminPdfName = typeof window !== 'undefined' ? localStorage.getItem(`assessment_pdf_response_${assessment.id}`) : assessment.adminResponsePdfName;
-    const adminStatus = typeof window !== 'undefined' ? localStorage.getItem(`assessment_status_${assessment.id}`) : assessment.status;
+  // Re-load assessments if the window gains focus, to catch updates from other tabs (like admin review page)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadAssessments();
+    };
+    if (typeof window !== 'undefined') {
+        window.addEventListener('focus', handleFocus);
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+        };
+    }
+  }, [loadAssessments]);
 
+
+  const handleViewDetails = (assessment: UserSubmittedAssessment) => {
+    // Re-fetch latest admin details directly from localStorage when opening modal
+    let freshAdminNotes, freshAdminPdfName, freshAdminStatus;
+    if (typeof window !== 'undefined') {
+        freshAdminNotes = localStorage.getItem(`assessment_notes_${assessment.id}`);
+        freshAdminPdfName = localStorage.getItem(`assessment_pdf_response_${assessment.id}`);
+        freshAdminStatus = localStorage.getItem(`assessment_status_${assessment.id}`);
+    }
+    
     setSelectedAssessmentForView({
       ...assessment,
-      adminResponseText: adminNotes || undefined,
-      adminResponsePdfName: adminPdfName || undefined,
-      status: (adminStatus as UserSubmittedAssessment["status"]) || assessment.status,
+      adminResponseText: freshAdminNotes !== null ? freshAdminNotes : assessment.adminResponseText,
+      adminResponsePdfName: freshAdminPdfName !== null ? freshAdminPdfName : assessment.adminResponsePdfName,
+      status: freshAdminStatus !== null ? (freshAdminStatus as UserSubmittedAssessment["status"]) : assessment.status,
     });
     setIsViewModalOpen(true);
   };
@@ -100,14 +129,13 @@ export default function MyAssessmentsPage() {
       (assessment) => assessment.id !== assessmentIdToDelete
     );
     localStorage.setItem(storageKey, JSON.stringify(updatedAssessments));
-    setMyAssessments(updatedAssessments);
+    setMyAssessments(updatedAssessments.sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime())); // re-sort after delete
     toast({ title: "Assessment Deleted", description: "The assessment has been successfully deleted." });
     setAssessmentIdToDelete(null);
     setIsDeleteConfirmOpen(false);
   };
-  
+
   const handleDownloadAdminReportPlaceholder = (pdfName: string) => {
-    // Simulate PDF download for now
     toast({
       title: "Download Initiated (Simulated)",
       description: `Simulating download of ${pdfName}. In a real app, this would download the actual PDF.`,
@@ -182,23 +210,23 @@ export default function MyAssessmentsPage() {
               <TableBody>
                 {myAssessments.map((assessment) => (
                   <TableRow key={assessment.id}>
-                    <TableCell>{assessment.hospitalName}</TableCell>
+                    <TableCell className="font-medium">{assessment.hospitalName}</TableCell>
                     <TableCell className="hidden sm:table-cell">{new Date(assessment.submissionDate).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         assessment.status === "Submitted" ? "bg-blue-100 text-blue-800" :
-                        assessment.status === "Reviewed" ? "bg-yellow-100 text-yellow-800" : 
-                        assessment.status === "Completed" ? "bg-green-100 text-green-800" : 
-                        "bg-gray-100 text-gray-800" 
+                        assessment.status === "Reviewed" ? "bg-yellow-100 text-yellow-800" :
+                        assessment.status === "Completed" ? "bg-green-100 text-green-800" :
+                        "bg-gray-100 text-gray-800"
                        }`}>
                         {assessment.status}
                        </span>
                     </TableCell>
                     <TableCell className="hidden md:table-cell truncate max-w-xs">{assessment.primaryGoalsSummary}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleViewDetails(assessment)}
                       >
                         <Eye className="mr-1 h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">View</span>
@@ -208,10 +236,11 @@ export default function MyAssessmentsPage() {
                           <Edit3 className="mr-1 h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Edit</span>
                         </Link>
                       </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         onClick={() => openDeleteConfirmation(assessment.id)}
+                        disabled={assessment.status === "Completed"} // Example: Disable delete for completed
                       >
                         <Trash2 className="mr-1 h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Delete</span>
                       </Button>
@@ -236,14 +265,17 @@ export default function MyAssessmentsPage() {
             <div className="space-y-4 py-4 text-sm">
               <div>
                 <h4 className="font-semibold text-foreground mb-1">Original Submission Details:</h4>
-                <ul className="list-disc list-inside space-y-1 text-muted-foreground bg-muted p-3 rounded-md">
-                  {selectedAssessmentForView.formData.s1_visionDetails && <li><strong>Vision Details:</strong> {selectedAssessmentForView.formData.s1_visionDetails}</li>}
-                  {selectedAssessmentForView.formData.s1_explorePriorityDepartments && <li><strong>Priority Departments:</strong> {selectedAssessmentForView.formData.s1_explorePriorityDepartments}</li>}
-                  <li><strong>Budget Range:</strong> {selectedAssessmentForView.formData.s7_budgetRange || selectedAssessmentForView.formData.s7_hasInitialBudget}</li>
-                  <li><strong>Timeline:</strong> {selectedAssessmentForView.formData.s7_expectedTimeline}</li>
-                  <li><strong>Key Goals:</strong> {selectedAssessmentForView.primaryGoalsSummary}</li>
-                  {/* Add more key fields from formData as needed */}
-                </ul>
+                <Card className="bg-muted p-3">
+                  <CardContent className="space-y-1 text-muted-foreground text-xs pt-3">
+                    {selectedAssessmentForView.formData.s1_visionDetails && <p><strong>Vision Details:</strong> {selectedAssessmentForView.formData.s1_visionDetails}</p>}
+                    {selectedAssessmentForView.formData.s1_explorePriorityDepartments && <p><strong>Priority Departments:</strong> {selectedAssessmentForView.formData.s1_explorePriorityDepartments}</p>}
+                    <p><strong>Budget Range:</strong> {selectedAssessmentForView.formData.s7_budgetRange || selectedAssessmentForView.formData.s7_hasInitialBudget}</p>
+                    <p><strong>Timeline:</strong> {selectedAssessmentForView.formData.s7_expectedTimeline}</p>
+                    <p><strong>Key Goals:</strong> {selectedAssessmentForView.primaryGoalsSummary}</p>
+                    <p><strong>Contact:</strong> {selectedAssessmentForView.formData.s1_contactName} ({selectedAssessmentForView.formData.s1_contactEmail})</p>
+                    {/* Add more key fields from formData as needed */}
+                  </CardContent>
+                </Card>
               </div>
 
               {selectedAssessmentForView.aiSummary && (
@@ -266,8 +298,8 @@ export default function MyAssessmentsPage() {
               )}
                <div>
                   <h4 className="font-semibold text-foreground mb-1">Admin Feedback/Report:</h4>
-                  {selectedAssessmentForView.adminResponseText ? 
-                    <p className="whitespace-pre-wrap bg-blue-50 p-3 rounded-md text-blue-700">{selectedAssessmentForView.adminResponseText}</p> 
+                  {selectedAssessmentForView.adminResponseText ?
+                    <p className="whitespace-pre-wrap bg-blue-50 p-3 rounded-md text-blue-700">{selectedAssessmentForView.adminResponseText}</p>
                     : <p className="italic text-muted-foreground">(No admin text feedback provided yet.)</p>
                   }
                   {selectedAssessmentForView.adminResponsePdfName ? (
@@ -276,10 +308,10 @@ export default function MyAssessmentsPage() {
                       <span className="text-sm text-green-700">
                         Admin PDF Report Sent: <span className="font-medium">{selectedAssessmentForView.adminResponsePdfName}</span>
                       </span>
-                       <Button 
-                        variant="link" 
-                        size="sm" 
-                        className="p-0 h-auto text-green-700 hover:text-green-800"
+                       <Button
+                        variant="link"
+                        size="sm"
+                        className="p-0 h-auto text-green-700 hover:text-green-800 text-xs"
                         onClick={() => handleDownloadAdminReportPlaceholder(selectedAssessmentForView.adminResponsePdfName!)}
                       >
                          (Download Placeholder)
@@ -308,11 +340,34 @@ export default function MyAssessmentsPage() {
               This action cannot be undone. This will permanently delete the assessment submitted
               for "{myAssessments.find(a => a.id === assessmentIdToDelete)?.hospitalName || 'this hospital'}"
               on {myAssessments.find(a => a.id === assessmentIdToDelete) ? new Date(myAssessments.find(a => a.id === assessmentIdToDelete)!.submissionDate).toLocaleDateString() : ''}.
+              The associated draft, if any, will also be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setAssessmentIdToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAssessment}>Delete Assessment</AlertDialogAction>
+            <AlertDialogAction onClick={() => {
+                handleDeleteAssessment();
+                // Also delete the draft associated with this assessment if editing it
+                const draftStorageKey = user?.hospitalId ? `assessment_form_draft_${user.hospitalId}` : null;
+                if (draftStorageKey) {
+                    const draftDataJson = localStorage.getItem(draftStorageKey);
+                    if (draftDataJson) {
+                        try {
+                            const draftData = JSON.parse(draftDataJson);
+                            // A simple check: if the draft's hospital name matches the deleted assessment's hospital name
+                            // This is not foolproof if multiple drafts could exist for the same hospital name,
+                            // but for an autosaved single draft per user, it's a reasonable heuristic.
+                            // A more robust check would involve matching more fields or having a draft ID.
+                            if (draftData.s1_hospitalName === myAssessments.find(a => a.id === assessmentIdToDelete)?.hospitalName) {
+                                localStorage.removeItem(draftStorageKey);
+                                toast({ title: "Associated Draft Deleted", description: "The autosaved draft for this assessment has also been cleared."});
+                            }
+                        } catch (e) {
+                           console.error("Could not check/delete draft during assessment deletion: ", e);
+                        }
+                    }
+                }
+            }}>Delete Assessment</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -320,5 +375,3 @@ export default function MyAssessmentsPage() {
     </div>
   );
 }
-
-    
