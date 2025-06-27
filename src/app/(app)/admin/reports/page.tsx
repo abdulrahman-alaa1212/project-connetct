@@ -23,11 +23,6 @@ export const mockAssessments: Assessment[] = [
     budget: "$50k - $200k",
     currentTech: "Some VR headsets (Oculus Quest 2)",
     goals: "Improve surgical outcomes and training efficiency.",
-    aiSummary: "City General Hospital requires VR for orthopedic surgical training and MR for neurosurgery guidance. They also need AR for vein finding. Their budget is substantial, and they aim to enhance surgical outcomes and training.",
-    aiSolutions: {
-      suggestedSolutions: "PrecisionVR Surgical Sim, NeuroNav MR System, VeinSight AR Glasses",
-      reasoning: "PrecisionVR offers realistic orthopedic modules. NeuroNav MR is designed for neurosurgical accuracy. VeinSight AR improves first-attempt success for IVs."
-    },
     adminNotes: "Followed up with Dr. Smith. They are particularly interested in the NeuroNav MR System. Sent preliminary quote."
   },
   {
@@ -42,11 +37,6 @@ export const mockAssessments: Assessment[] = [
     budget: "< $10k",
     currentTech: "Standard PCs only",
     goals: "Enhance patient comfort.",
-    aiSummary: "Rural Health Clinic needs a low-cost VR solution for patient distraction during minor procedures. They have a small budget and basic tech.",
-    aiSolutions: {
-      suggestedSolutions: "CalmVR Basic, DistractoApp Mobile VR",
-      reasoning: "These solutions are affordable and require minimal setup, suitable for basic patient distraction needs."
-    },
     adminNotes: ""
   },
   {
@@ -61,11 +51,6 @@ export const mockAssessments: Assessment[] = [
     budget: "$10k - $50k",
     currentTech: "Modern PCs, good Wi-Fi",
     goals: "Improve patient recovery times and staff training.",
-    aiSummary: "Green Valley needs VR for rehab and AR for staff anatomy training. Budget is moderate.",
-    aiSolutions: {
-      suggestedSolutions: "RehabVR Suite, HoloAnatomy AR",
-      reasoning: "RehabVR offers diverse physical therapy modules. HoloAnatomy AR is effective for interactive learning."
-    },
     adminNotes: ""
   },
   {
@@ -80,11 +65,6 @@ export const mockAssessments: Assessment[] = [
     budget: "> $200k",
     currentTech: "Dedicated simulation lab, high-speed network.",
     goals: "Become a leader in medical XR technology.",
-    aiSummary: "City General Hospital (follow-up) is looking for comprehensive XR solutions across multiple specialties, including advanced simulation, MR for surgical planning, and AR for remote consultations. They have a large budget and advanced infrastructure.",
-    aiSolutions: {
-      suggestedSolutions: "SimX Enterprise Platform, MedVis MR Suite, ConnectAR Remote Assist",
-      reasoning: "SimX provides broad specialty coverage. MedVis MR offers robust pre-op and intra-op tools. ConnectAR is designed for secure remote expert consultations."
-    },
     adminNotes: "Project completed successfully. Case study pending."
   },
 ];

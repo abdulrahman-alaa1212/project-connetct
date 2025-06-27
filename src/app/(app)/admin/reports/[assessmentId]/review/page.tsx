@@ -122,15 +122,6 @@ export default function ReviewAssessmentPage() {
     reportContent += `Budget: ${assessment.budget || 'N/A'}\n`;
     reportContent += `Current Technology: ${assessment.currentTech || 'N/A'}\n`;
     reportContent += `Goals: ${assessment.goals || 'N/A'}\n\n`;
-
-    if (assessment.aiSummary) {
-      reportContent += `--- AI Generated Summary ---\n${assessment.aiSummary}\n\n`;
-    }
-    if (assessment.aiSolutions) {
-      reportContent += `--- AI Suggested Solutions ---\n`;
-      reportContent += `Solutions: ${assessment.aiSolutions.suggestedSolutions}\n`;
-      reportContent += `Reasoning: ${assessment.aiSolutions.reasoning}\n\n`;
-    }
     
     // Use adminResponse from state for current edits, or fallback to assessment.adminNotes
     const currentAdminNotes = adminResponse || (assessment.adminNotes); 
@@ -220,29 +211,6 @@ export default function ReviewAssessmentPage() {
             <p><strong>Goals:</strong> {assessment.goals}</p>
           </CardContent>
         </Card>
-        
-        <div className="space-y-4">
-          {assessment.aiSummary && (
-            <Card>
-              <CardHeader><CardTitle className="text-xl flex items-center"><Brain className="mr-2 h-5 w-5 text-primary" />AI Generated Summary</CardTitle></CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm bg-muted p-3 rounded-md">{assessment.aiSummary}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {assessment.aiSolutions && (
-             <Card>
-              <CardHeader><CardTitle className="text-xl flex items-center"><Lightbulb className="mr-2 h-5 w-5 text-primary" />AI Suggested Solutions</CardTitle></CardHeader>
-              <CardContent className="text-sm space-y-2">
-                <p className="font-semibold">Solutions:</p>
-                <p className="whitespace-pre-wrap bg-muted p-3 rounded-md">{assessment.aiSolutions.suggestedSolutions}</p>
-                <p className="font-semibold mt-2">Reasoning:</p>
-                <p className="whitespace-pre-wrap bg-muted p-3 rounded-md">{assessment.aiSolutions.reasoning}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
       </div>
 
       <Card>
@@ -310,6 +278,3 @@ export default function ReviewAssessmentPage() {
     </div>
   );
 }
-
-
-    

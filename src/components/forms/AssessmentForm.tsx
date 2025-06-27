@@ -31,8 +31,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2, Save, Eye, FilePenLine, Info, Undo2 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { summarizeAssessment, type SummarizeAssessmentOutput } from "@/ai/flows/summarize-assessment";
-import { matchVrArSolutions, type MatchVrArSolutionsOutput } from "@/ai/flows/match-vr-ar-solutions";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -110,7 +108,7 @@ const departmentOpportunities = [
     { id: "enhanceSafety", label: "Enhance patient safety.", fieldName: "enhanceSafetyDetails" },
     { id: "improveTraining", label: "Improve training for doctors, surgeons, nurses, or technicians.", fieldName: "improveTrainingDetails" },
     { id: "facilitatePlanning", label: "Facilitate planning for complex procedures (e.g., surgical operations).", fieldName: "facilitatePlanningDetails" },
-    { id: "improveCommunication", label: "Improve communication among medical team members.", fieldName: "improveCommunicationDetails" },
+    { id: "improveCommunication", label: "Improve communication among medical team members.", fieldName: "improvePatientExperienceDetails" },
     { id: "improvePatientExperience", label: "Improve patient experience or awareness of their condition/treatment plan.", fieldName: "improvePatientExperienceDetails" },
     { id: "reduceResourceDependency", label: "Reduce dependency on costly resources (e.g., physical anatomical models, cadaver training).", fieldName: "reduceResourceDependencyDetails" },
     { id: "other", label: "Other areas (Please specify and explain):", fieldName: "otherDetails", otherSpecifyField: "otherField" },
@@ -127,8 +125,6 @@ export function AssessmentForm() {
   const [isEditMode, setIsEditMode] = useState(!!editId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [submissionResult, setSubmissionResult] = useState<SummarizeAssessmentOutput | null>(null);
-  const [solutionMatches, setSolutionMatches] = useState<MatchVrArSolutionsOutput | null>(null);
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
 
   const draftStorageKey = user?.hospitalId ? `assessment_form_draft_${user.hospitalId}` : null;
@@ -137,7 +133,6 @@ export function AssessmentForm() {
   const form = useForm<FullAssessmentSchemaValues>({
     resolver: zodResolver(FullAssessmentSchema),
     defaultValues: {
-      // ... (existing default values from previous implementation)
       s1_hospitalName: "", s1_hospitalType: undefined, s1_hospitalTypeOther: "", s1_location: "", s1_bedCount: "", s1_concernedDepartments: [], s1_concernedDepartmentsOther: "", s1_contactName: "", s1_contactPosition: "", s1_contactEmail: "", s1_contactPhone: "", s1_hasClearVision: undefined, s1_visionDetails: "", s1_explorePriorityDepartments: "", s2_hasPreviousExperience: undefined, s2_experiences: [], s3_mainGoals: [], s3_mainGoalsOther: "", s3_currentChallenges: "", s3_hasKPIs: undefined, s3_kpiDetails: "", s4_wifiPerformance: undefined, s4_wifiDetails: "", s4_bandwidthConstraints: undefined, s4_bandwidthDetails: "", s4_networkSecurityPolicies: undefined, s4_networkSecurityDetails: "", s4_hasSpecializedEquipment: undefined, s4_equipmentDetails: "", s4_hasHighSpecComputers: undefined, s4_computerDetails: "", s4_mainInformationSystems: "", s4_mainInformationSystemsOther: "", s4_needsIntegration: undefined, s4_integrationDetails: "", s4_itSupportTeam: undefined, s4_itSupportTeamOther: "", s4_itTeamExperience: undefined, s4_itContactPoint: undefined, s4_itContactName: "", s4_staffTechSavviness: undefined, s4_resistanceToChangePlan: "", s5_marketingInterest: undefined, s5_marketingInterestOther: "", s5_marketingGoals: "", s6_departmentAnalyses: [], s7_hasInitialBudget: undefined, s7_budgetRange: "", s7_expectedTimeline: undefined, s7_hasCriticalDeadlines: undefined, s7_deadlineDetails: "", s8_dataSecurityConcerns: undefined, s8_securityConcernDetails: "", s8_regulatoryRequirements: undefined, s8_regulatoryDetails: "", s8_otherInnovationProjects: "", s8_keyStakeholders: "", s9_questionsForYura: "", s9_additionalInfo: "", s9_communicationPreferences: [], s9_preferredContactTimes: "",
     },
   });
@@ -145,18 +140,17 @@ export function AssessmentForm() {
   // Autosave draft functionality
   const watchedValues = form.watch();
   useEffect(() => {
-    if (isInitializing || !draftStorageKey || isSubmittedSuccessfully || isEditMode) return; // Don't autosave during init, if submitted, or in edit mode (edit has its own load)
+    if (isInitializing || !draftStorageKey || isSubmittedSuccessfully || isEditMode) return; 
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
     debounceTimeoutRef.current = setTimeout(() => {
-      if (form.formState.isDirty) { // Only save if form has been touched
+      if (form.formState.isDirty) { 
         localStorage.setItem(draftStorageKey, JSON.stringify(watchedValues));
-        // console.log("Draft autosaved");
       }
-    }, 1000); // Debounce time: 1 second
+    }, 1000); 
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -170,7 +164,7 @@ export function AssessmentForm() {
   useEffect(() => {
     setIsEditMode(!!editId);
     setIsInitializing(true);
-    setIsSubmittedSuccessfully(false); // Reset submission state on load/editId change
+    setIsSubmittedSuccessfully(false);
 
     const loadData = async () => {
       if (editId && user && user.hospitalId) {
@@ -186,29 +180,28 @@ export function AssessmentForm() {
             router.push("/my-assessments");
           }
         }
-      } else if (draftStorageKey && !editId) { // Only load draft if not in edit mode
+      } else if (draftStorageKey && !editId) { 
         const draftDataJson = localStorage.getItem(draftStorageKey);
         if (draftDataJson) {
           try {
             const draftData = JSON.parse(draftDataJson);
-            // Simple prompt to restore draft
             if (window.confirm("You have a saved draft. Would you like to restore it?")) {
               form.reset(draftData);
               toast({ title: "Draft Restored", description: "Your previously saved draft has been loaded."});
             } else {
-              localStorage.removeItem(draftStorageKey); // User chose not to restore
-              form.reset(); // Reset to default values
+              localStorage.removeItem(draftStorageKey); 
+              form.reset(); 
             }
           } catch (e) {
             console.error("Failed to parse draft data", e);
-            localStorage.removeItem(draftStorageKey); // Clear corrupted draft
+            localStorage.removeItem(draftStorageKey); 
             form.reset();
           }
         } else {
-            form.reset(); // Reset to defaults if no draft and not editing
+            form.reset(); 
         }
       } else {
-         form.reset(); // Ensure form is reset if no editId and no draft key (e.g. user not logged in yet)
+         form.reset(); 
       }
       setIsInitializing(false);
     };
@@ -228,7 +221,6 @@ export function AssessmentForm() {
     name: "s6_departmentAnalyses",
   });
 
-  // Watchers (kept for conditional rendering logic)
   const watchS1HospitalType = form.watch("s1_hospitalType");
   const watchS1ConcernedDepartments = form.watch("s1_concernedDepartments");
   const watchS1HasClearVision = form.watch("s1_hasClearVision");
@@ -248,122 +240,17 @@ export function AssessmentForm() {
   const watchS8DataSecurityConcerns = form.watch("s8_dataSecurityConcerns");
   const watchS8RegulatoryRequirements = form.watch("s8_regulatoryRequirements");
 
-
-  function generateAssessmentDataString(values: FullAssessmentSchemaValues): string {
-    let dataString = "";
-    dataString += `Section 1: General Information\n`;
-    dataString += `Hospital Name: ${values.s1_hospitalName}\n`;
-    dataString += `Hospital Type: ${values.s1_hospitalType}${values.s1_hospitalType === "Other" ? ` (${values.s1_hospitalTypeOther})` : ''}\n`;
-    dataString += `Location: ${values.s1_location}\n`;
-    dataString += `Bed Count: ${values.s1_bedCount}\n`;
-    dataString += `Concerned Departments: ${values.s1_concernedDepartments.join(', ')}${values.s1_concernedDepartments.includes("Other (Please specify)") ? ` (${values.s1_concernedDepartmentsOther})` : ''}\n`;
-    dataString += `Contact Person: ${values.s1_contactName}, ${values.s1_contactPosition}, ${values.s1_contactEmail}, ${values.s1_contactPhone}\n`;
-    dataString += `Clear Vision for Application: ${values.s1_hasClearVision}\n`;
-    if (values.s1_hasClearVision === "Yes, we have a clear and specific vision.") dataString += `Vision Details: ${values.s1_visionDetails}\n`;
-    if (values.s1_hasClearVision === "No, but we are interested in exploring possibilities generally in specific department(s).") dataString += `Priority Departments for Exploration: ${values.s1_explorePriorityDepartments}\n`;
-
-    dataString += `\nSection 2: Previous Experiences\n`;
-    dataString += `Previous Experience with VR/AR/MR: ${values.s2_hasPreviousExperience}\n`;
-    if (values.s2_hasPreviousExperience === "Yes" && values.s2_experiences) {
-      values.s2_experiences.forEach((exp, i) => {
-        dataString += `Experience ${i + 1}:\n`;
-        dataString += `  Company/Developer: ${exp.companyName}\n`;
-        dataString += `  Product/Description: ${exp.productDescription}\n`;
-        dataString += `  Positives: ${exp.positives}\n`;
-        dataString += `  Negatives/Challenges: ${exp.negatives}\n`;
-        dataString += `  Still in Use: ${exp.stillInUse}${exp.stillInUse === "No" ? ` (Reason: ${exp.stillInUseReason})` : ''}\n`;
-      });
-    }
-
-    dataString += `\nSection 3: Goals and Challenges\n`;
-    dataString += `Main Goals: ${values.s3_mainGoals.join(', ')}${values.s3_mainGoals.includes("Other (Please specify)") ? ` (${values.s3_mainGoalsOther})` : ''}\n`;
-    dataString += `Current Challenges: ${values.s3_currentChallenges}\n`;
-    dataString += `Defined KPIs: ${values.s3_hasKPIs}\n`;
-    if (values.s3_hasKPIs === "Yes, we have clear indicators" || values.s3_hasKPIs === "We are working on defining them") dataString += `KPI Details: ${values.s3_kpiDetails}\n`;
-
-    dataString += `\nSection 4: Infrastructure and Resources\n`;
-    dataString += `Wi-Fi Performance: ${values.s4_wifiPerformance}${values.s4_wifiPerformance === "Partially" || values.s4_wifiPerformance === "No" ? ` (Details: ${values.s4_wifiDetails})` : ''}\n`;
-    dataString += `Bandwidth Constraints: ${values.s4_bandwidthConstraints}${values.s4_bandwidthConstraints === "Yes" ? ` (Details: ${values.s4_bandwidthDetails})` : ''}\n`;
-    dataString += `Network Security Policies: ${values.s4_networkSecurityPolicies}${values.s4_networkSecurityPolicies === "Yes" ? ` (Details: ${values.s4_networkSecurityDetails})` : ''}\n`;
-    dataString += `Has Specialized VR/AR/MR Equipment: ${values.s4_hasSpecializedEquipment}${values.s4_hasSpecializedEquipment === "Yes" ? ` (Details: ${values.s4_equipmentDetails})` : ''}\n`;
-    dataString += `Has High-Spec Computers: ${values.s4_hasHighSpecComputers}${values.s4_hasHighSpecComputers === "Yes" || values.s4_hasHighSpecComputers === "Partially" ? ` (Details: ${values.s4_computerDetails})` : ''}\n`;
-    dataString += `Main Information Systems: ${values.s4_mainInformationSystems}${values.s4_mainInformationSystemsOther ? ` (Other: ${values.s4_mainInformationSystemsOther})` : ''}\n`;
-    dataString += `Needs Integration with Current Systems: ${values.s4_needsIntegration}${values.s4_needsIntegration === "Yes" || values.s4_needsIntegration === "Maybe in the future" ? ` (Integration Details: ${values.s4_integrationDetails})` : ''}\n`;
-    dataString += `IT Support Team: ${values.s4_itSupportTeam}${values.s4_itSupportTeam === "Other" ? ` (${values.s4_itSupportTeamOther})` : ''}\n`;
-    dataString += `IT Team Experience with New Tech: ${values.s4_itTeamExperience}\n`;
-    dataString += `IT Contact Point for AR/MR Projects: ${values.s4_itContactPoint}${values.s4_itContactPoint === "Yes" ? ` (Contact Name: ${values.s4_itContactName})` : ''}\n`;
-    dataString += `Staff Tech Savviness: ${values.s4_staffTechSavviness}\n`;
-    dataString += `Plan for Resistance to Change: ${values.s4_resistanceToChangePlan}\n`;
-
-    dataString += `\nSection 5: VR/AR in Marketing\n`;
-    dataString += `Interest in VR/AR for Marketing: ${values.s5_marketingInterest}${values.s5_marketingInterest === "Other" ? ` (${values.s5_marketingInterestOther})` : ''}\n`;
-    if (values.s5_marketingInterest && values.s5_marketingInterest !== "No, we are not currently considering it") dataString += `Marketing Goals/Ideas: ${values.s5_marketingGoals}\n`;
-
-    if (values.s6_departmentAnalyses && values.s6_departmentAnalyses.length > 0) {
-      dataString += `\nSection 6: Department Analyses\n`;
-      values.s6_departmentAnalyses.forEach((dept, i) => {
-        dataString += `Department Analysis ${i + 1}:\n`;
-        dataString += `  Department Name: ${dept.departmentName}\n`;
-        dataString += `  Main Equipment: ${dept.mainEquipment}\n`;
-        dataString += `  Current Procedures: ${dept.currentProcedures}\n`;
-        dataString += `  Procedure Type: ${dept.procedureType}\n`;
-        if(dept.procedureType === "Mostly traditional and heavily reliant on human skills and experience") dataString += `  Traditional Problems: ${dept.traditionalProblems}\n`;
-        if(dept.procedureType === "Modern and heavily reliant on advanced technologies and devices") dataString += `  Modern Problems: ${dept.modernProblems}\n`;
-        dataString += `  General Problems: ${dept.generalProblems}\n`;
-        if(dept.opportunities){
-            dataString += `  Opportunities:\n`;
-            if(dept.opportunities.improveAccuracy) dataString += `    - Improve Accuracy: ${dept.opportunities.improveAccuracyDetails}\n`;
-            if(dept.opportunities.reduceTime) dataString += `    - Reduce Time: ${dept.opportunities.reduceTimeDetails}\n`;
-            if(dept.opportunities.enhanceSafety) dataString += `    - Enhance Safety: ${dept.opportunities.enhanceSafetyDetails}\n`;
-            if(dept.opportunities.improveTraining) dataString += `    - Improve Training: ${dept.opportunities.improveTrainingDetails}\n`;
-            if(dept.opportunities.facilitatePlanning) dataString += `    - Facilitate Planning: ${dept.opportunities.facilitatePlanningDetails}\n`;
-            if(dept.opportunities.improveCommunication) dataString += `    - Improve Communication: ${dept.opportunities.improveCommunicationDetails}\n`;
-            if(dept.opportunities.improvePatientExperience) dataString += `    - Improve Patient Experience: ${dept.opportunities.improvePatientExperienceDetails}\n`;
-            if(dept.opportunities.reduceResourceDependency) dataString += `    - Reduce Resource Dependency: ${dept.opportunities.reduceResourceDependencyDetails}\n`;
-            if(dept.opportunities.other && dept.opportunities.otherField) dataString += `    - Other (${dept.opportunities.otherField}): ${dept.opportunities.otherDetails}\n`;
-        }
-      });
-    }
-
-    dataString += `\nSection 7: Budget and Timeline\n`;
-    dataString += `Initial Budget Allocated: ${values.s7_hasInitialBudget}\n`;
-    if (values.s7_budgetRange) dataString += `Budget Range: ${values.s7_budgetRange}\n`;
-    dataString += `Expected Timeline for First Project: ${values.s7_expectedTimeline}\n`;
-    dataString += `Critical Deadlines: ${values.s7_hasCriticalDeadlines}${values.s7_hasCriticalDeadlines === "Yes" ? ` (Details: ${values.s7_deadlineDetails})` : ''}\n`;
-
-    dataString += `\nSection 8: Other Concerns and Considerations\n`;
-    dataString += `Data Security Concerns: ${values.s8_dataSecurityConcerns}${values.s8_dataSecurityConcerns === "Yes" ? ` (Details: ${values.s8_securityConcernDetails})` : ''}\n`;
-    dataString += `Regulatory Requirements: ${values.s8_regulatoryRequirements}${values.s8_regulatoryRequirements === "Yes" || values.s8_regulatoryRequirements === "Not sure" ? ` (Details: ${values.s8_regulatoryDetails})` : ''}\n`;
-    dataString += `Other Innovation Projects: ${values.s8_otherInnovationProjects}\n`;
-    dataString += `Key Stakeholders: ${values.s8_keyStakeholders}\n`;
-
-    dataString += `\nSection 9: Additional Questions and Closing\n`;
-    dataString += `Questions for Yura Team: ${values.s9_questionsForYura}\n`;
-    dataString += `Additional Information: ${values.s9_additionalInfo}\n`;
-    dataString += `Communication Preferences: ${values.s9_communicationPreferences.join(', ')}\n`;
-    dataString += `Preferred Contact Times: ${values.s9_preferredContactTimes}\n`;
-
-    return dataString;
-  }
-
-
   async function onSubmit(values: FullAssessmentSchemaValues) {
     if (!user || !user.hospitalId) {
       toast({ variant: "destructive", title: "Error", description: "User not authenticated or hospital ID missing." });
       return;
     }
     setIsSubmitting(true);
-    setSubmissionResult(null);
-    setSolutionMatches(null);
-
-    const assessmentDataString = generateAssessmentDataString(values);
 
     try {
-      const summaryOutput = await summarizeAssessment({ assessmentData: assessmentDataString });
-      setSubmissionResult(summaryOutput);
-      const solutionsOutput = await matchVrArSolutions({ assessmentData: assessmentDataString });
-      setSolutionMatches(solutionsOutput);
-
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const storageKey = `user_assessments_${user.hospitalId}`;
       const storedAssessments = localStorage.getItem(storageKey);
       let assessments: UserSubmittedAssessment[] = storedAssessments ? JSON.parse(storedAssessments) : [];
@@ -376,14 +263,14 @@ export function AssessmentForm() {
               formData: values,
               hospitalName: values.s1_hospitalName,
               primaryGoalsSummary: values.s3_mainGoals.slice(0, 2).join(', ') + (values.s3_mainGoals.length > 2 ? '...' : ''),
-              aiSummary: summaryOutput.summary,
-              aiSolutions: solutionsOutput,
+              aiSummary: undefined,
+              aiSolutions: undefined,
               submissionDate: new Date().toISOString(),
               status: "Submitted"
             }
           : asm
         );
-        toast({ title: "Assessment Updated", description: "Your assessment has been successfully updated and re-analyzed." });
+        toast({ title: "Assessment Updated", description: "Your assessment has been successfully updated." });
       } else {
         const newAssessmentId = Date.now().toString();
         const newAssessment: UserSubmittedAssessment = {
@@ -394,25 +281,24 @@ export function AssessmentForm() {
           status: "Submitted",
           primaryGoalsSummary: values.s3_mainGoals.slice(0, 2).join(', ') + (values.s3_mainGoals.length > 2 ? '...' : ''),
           formData: values,
-          aiSummary: summaryOutput.summary,
-          aiSolutions: solutionsOutput,
+          aiSummary: undefined,
+          aiSolutions: undefined,
           adminResponseText: "",
           adminResponsePdfName: ""
         };
         assessments.push(newAssessment);
-        toast({ title: "Assessment Submitted", description: "Your assessment has been successfully submitted and analyzed." });
+        toast({ title: "Assessment Submitted", description: "Your assessment has been successfully submitted." });
         if (draftStorageKey) {
-            localStorage.removeItem(draftStorageKey); // Clear draft on successful submission
+            localStorage.removeItem(draftStorageKey); 
         }
       }
 
       localStorage.setItem(storageKey, JSON.stringify(assessments));
-      setIsSubmittedSuccessfully(true); // Set flag to show results view
+      setIsSubmittedSuccessfully(true);
 
       if (isEditMode) {
         router.push("/my-assessments");
       }
-      // For new submissions, AI results are displayed below due to isSubmittedSuccessfully flag.
 
     } catch (error) {
       console.error("Submission error:", error);
@@ -432,10 +318,8 @@ export function AssessmentForm() {
     }
     form.reset();
     setIsSubmittedSuccessfully(false);
-    setSubmissionResult(null);
-    setSolutionMatches(null);
-    setIsEditMode(false); // Ensure we are not in edit mode
-    router.replace('/assessment', undefined); // Clear editId from URL if present
+    setIsEditMode(false); 
+    router.replace('/assessment', undefined);
   };
 
   if (isInitializing) {
@@ -451,7 +335,7 @@ export function AssessmentForm() {
   const pageDescription = isEditMode
     ? "Please review and update the details of your assessment. Your answers will help us refine our understanding and recommendations."
     : "Please answer the following questions with as much detail and accuracy as possible. Your answers will help us better understand your needs and provide appropriate recommendations.";
-  const submitButtonText = isEditMode ? "Update Assessment" : "Submit Assessment & Get AI Analysis";
+  const submitButtonText = isEditMode ? "Update Assessment" : "Submit Assessment";
 
   if (isSubmittedSuccessfully && !isEditMode) {
     return (
@@ -459,26 +343,9 @@ export function AssessmentForm() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl sm:text-3xl font-bold text-primary">Assessment Submitted Successfully!</CardTitle>
-            <CardDescription>Thank you. Your assessment has been processed. Below are the AI-generated insights.</CardDescription>
+            <CardDescription>Thank you. Your assessment has been received and will be reviewed by our team.</CardDescription>
           </CardHeader>
         </Card>
-        {submissionResult && (
-          <Card>
-            <CardHeader><CardTitle className="text-xl text-primary">AI Generated Summary</CardTitle></CardHeader>
-            <CardContent><pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{submissionResult.summary}</pre></CardContent>
-          </Card>
-        )}
-        {solutionMatches && (
-          <Card>
-            <CardHeader><CardTitle className="text-xl text-primary">AI Suggested Solutions</CardTitle></CardHeader>
-            <CardContent>
-              <h3 className="font-semibold">Solutions:</h3>
-              <pre className="whitespace-pre-wrap mb-2 bg-muted p-4 rounded-md text-sm">{solutionMatches.suggestedSolutions}</pre>
-              <h3 className="font-semibold">Reasoning:</h3>
-              <pre className="whitespace-pre-wrap bg-muted p-4 rounded-md text-sm">{solutionMatches.reasoning}</pre>
-            </CardContent>
-          </Card>
-        )}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button onClick={() => router.push("/my-assessments")} variant="outline">
             <Eye className="mr-2 h-4 w-4" /> View My Assessments
