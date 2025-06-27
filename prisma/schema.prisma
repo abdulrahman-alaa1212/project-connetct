@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  hashedPassword  String
+  avatarUrl       String?
+  role            UserRole
+  hospitalId      String? // A unique ID for the hospital entity this user belongs to.
+  providerId      String? // A unique ID for the provider entity this user belongs to.
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  assessments     Assessment[]     @relation("HospitalAssessments")
+  postedJobs      JobPosting[]     @relation("AdminJobPostings")
+  applications    Application[]    @relation("ProfessionalApplications")
+  services        ProviderService[] @relation("ProviderServices")
+}
+
+model Assessment {
+  id                String           @id @default(cuid())
+  status            AssessmentStatus @default(SUBMITTED)
+  submissionDate    DateTime         @default(now())
+  formData          Json // The complete, structured data from the FullAssessmentSchema
+  aiSummary         String?          @db.Text
+  aiSolutions       Json? // Structure: { suggestedSolutions: string, reasoning: string }
+  adminReview       Json? // Structure: { adminUserId: string, responseText: string, responsePdfUrl: string, reviewDate: timestamp }
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  hospitalUser      User             @relation("HospitalAssessments", fields: [hospitalUserId], references: [id])
+  hospitalUserId    String
+  hospitalId        String // The ID of the hospital organization, for grouping.
+}
+
+model JobPosting {
+  id              String        @id @default(cuid())
+  title           String
+  company         String
+  location        String
+  description     String        @db.Text
+  type            JobType
+  companyLogoUrl  String?
+  datePosted      DateTime      @default(now())
+  isActive        Boolean       @default(true)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  postedBy        User          @relation("AdminJobPostings", fields: [postedByAdminId], references: [id])
+  postedByAdminId String
+  applications    Application[]
+}
+
+model Application {
+  id                String            @id @default(cuid())
+  cvFileUrl         String // URL to the CV file in cloud storage
+  coverLetter       String?           @db.Text
+  status            ApplicationStatus @default(SUBMITTED)
+  applicationDate   DateTime          @default(now())
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  job               JobPosting        @relation(fields: [jobId], references: [id])
+  jobId             String
+  professional      User              @relation("ProfessionalApplications", fields: [professionalUserId], references: [id])
+  professionalUserId String
+}
+
+model ProviderService {
+  id             String          @id @default(cuid())
+  name           String
+  description    String          @db.Text
+  category       ServiceCategory
+  pricingModel   PricingModel
+  tags           String[]
+  imageUrl       String?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  providerUser   User            @relation("ProviderServices", fields: [providerUserId], references: [id])
+  providerUserId String
+  providerId     String // The ID of the provider company, for grouping.
+}
+
+enum UserRole {
+  HOSPITAL
+  PROFESSIONAL
+  PROVIDER
+  ADMIN
+}
+
+enum AssessmentStatus {
+  SUBMITTED
+  REVIEWED
+  COMPLETED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  TRAINING
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  VIEWED
+  UNDER_REVIEW
+  SHORTLISTED
+  OFFERED
+  REJECTED
+}
+
+enum ServiceCategory {
+  VR_DEVELOPMENT
+  AR_CONTENT_CREATION
+  MR_CONSULTATION
+  XR_TRAINING_SOLUTIONS
+  HARDWARE_PROVISION
+  PLATFORM_SERVICES
+  OTHER
+}
+
+enum PricingModel {
+  PROJECT_BASED
+  HOURLY_RATE
+  SUBSCRIPTION
+  CUSTOM_QUOTE
+}
